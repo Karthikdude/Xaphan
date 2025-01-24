@@ -53,7 +53,7 @@ To install Xaphan, follow these steps:
    ```
 ## Common Errors and Solutions
 
-   ![Issues](issues.md)
+   [Issues](issues.md)
 
 ## Usage
 
