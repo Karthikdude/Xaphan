@@ -23,8 +23,8 @@ To install Xaphan, follow these steps:
 
 1. **Clone the Repository**:
    ```sh
-   git clone https://github.com/Karthikdude/xaphan
-   cd xaphan
+   git clone https://github.com/Karthikdude/Xaphan
+   cd Xaphan
    ```
 
 2. **Install Dependencies**:
@@ -60,12 +60,12 @@ To install Xaphan, follow these steps:
 
 To scan a single domain:
 ```sh
-./xaphan -u testphp.vulnweb.com --wayback
+xaphan -url testphp.vulnweb.com [--wayback] or [-gau]
 ```
 
 To scan a list of domains from a file:
 ```sh
-./xaphan -l domains.txt --gau
+xaphan -list domains.txt [--wayback] or [-gau]
 ```
 
 ### Options
@@ -84,7 +84,7 @@ To scan a list of domains from a file:
 ### Example
 
 ```sh
-./xaphan -u testphp.vulnweb.com --gau -r --json output.json
+xaphan -uurl testphp.vulnweb.com --gau  --json output.json
 ```
 
 ## Tools
@@ -132,6 +132,6 @@ For more information, please contact [Karthik S Sathyan](https://karthik-s-sathy
 
 ---
 
-Developed by Karthik S Sathyan
+Developed by Karthik S Sathyan.  [LinkedIn](https://www.linkedin.com/in/karthik-s-sathyan/)
 
-[LinkedIn](https://www.linkedin.com/in/karthik-s-sathyan/)
+
