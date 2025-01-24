@@ -45,7 +45,11 @@ To install Xaphan, follow these steps:
 
 4. **Build the Tool**:
    ```sh
- go build -o xaphan main.go
+    go build -o xaphan main.go
+   ```
+   **Build the Tool**:
+   ```sh
+    go build -o xaphan main.go
    ```
 
 ## Usage
