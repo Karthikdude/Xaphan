@@ -72,8 +72,8 @@ xaphan -list domains.txt [--wayback] or [-gau]
 
 - `-u`, `--url`: Scan a single domain.
 - `-l`, `--list`: File containing a list of domains to scan.
-- `--wayback`: Use Wayback Machine to fetch URLs.
-- `--gau`: Use gau to fetch URLs.
+- `-wayback`: Use Wayback Machine to fetch URLs.
+- `-gau`: Use gau to fetch URLs.
 - `-v`, `--verbose`: Enable verbose output.
 - `-r`, `--response`: Display HTTP response status codes.
 - `-d`, `--detailed`: Save detailed report to a file.
