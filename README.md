@@ -1,6 +1,6 @@
 # Xaphan
 
-![Xaphan](xaphan.jpg)
+![Xaphan](Xaphan.jpg)
 
 ## Introduction
 
