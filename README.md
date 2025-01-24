@@ -51,6 +51,9 @@ To install Xaphan, follow these steps:
    ```sh
     sudo mv xaphan /usr/local/bin/
    ```
+## Common Errors and Solutions
+
+   ![Issues](issues.md)
 
 ## Usage
 
