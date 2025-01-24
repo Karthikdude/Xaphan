@@ -70,16 +70,15 @@ xaphan -list domains.txt [-wayback] or [-gau]
 
 ### Options
 
-- `-u`, `--url`: Scan a single domain.
-- `-l`, `--list`: File containing a list of domains to scan.
+-  `-url`: Scan a single domain.
+- `-list`: File containing a list of domains to scan.
 - `-wayback`: Use Wayback Machine to fetch URLs.
 - `-gau`: Use gau to fetch URLs.
-- `-v`, `--verbose`: Enable verbose output.
-- `-r`, `--response`: Display HTTP response status codes.
-- `-d`, `--detailed`: Save detailed report to a file.
-- `--json`: Save results in JSON format.
-- `-h`, `--help`: Show this help message and exit.
-- `-t`, `--threads`: Number of threads to use for concurrent processing (default is 50).
+- `-verbose`: Enable verbose output.
+- `-response`: Display HTTP response status codes.
+- `-json`: Save results in JSON format.
+- `-h`: Show this help message and exit.
+- `-t`: Number of threads to use for concurrent processing (default is 50).
 
 ### Example
 
