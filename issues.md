@@ -75,14 +75,14 @@
    - **Cause**: Required dependencies are not installed or not available.
    - **Solution**: Install the required dependencies.
      ```sh
-     pip install -r requirements.txt
+     go mod tidy
      ```
 
 12. **Error: Incorrect usage of flags**
    - **Cause**: The flags provided in the command are incorrect or not supported.
    - **Solution**: Refer to the usage instructions and ensure the flags are used correctly.
      ```sh
-     xaphan --help
+     xaphan -h
      ```
 
 13. **Error: Insufficient resources**
