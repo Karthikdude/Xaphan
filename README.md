@@ -60,12 +60,12 @@ To install Xaphan, follow these steps:
 
 To scan a single domain:
 ```sh
-xaphan -url testphp.vulnweb.com [--wayback] or [-gau]
+xaphan -url testphp.vulnweb.com [-wayback] or [-gau]
 ```
 
 To scan a list of domains from a file:
 ```sh
-xaphan -list domains.txt [--wayback] or [-gau]
+xaphan -list domains.txt [-wayback] or [-gau]
 ```
 
 ### Options
