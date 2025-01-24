@@ -55,11 +55,12 @@ To install Xaphan, follow these steps:
 
    [Additional Details and Steps](issues.md)
 
+---
+
 ## Usage
 
 ![Usage](usage.png)
 
----
 
 ### Basic Usage
 
