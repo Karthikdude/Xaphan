@@ -47,9 +47,9 @@ To install Xaphan, follow these steps:
    ```sh
     go build -o xaphan main.go
    ```
-   **Build the Tool**:
+   **Replace the Existing Binary: If you previously moved the binary to /usr/local/bin**:
    ```sh
-    go build -o xaphan main.go
+    sudo mv xaphan /usr/local/bin/
    ```
 
 ## Usage
