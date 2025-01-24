@@ -59,8 +59,7 @@ To install Xaphan, follow these steps:
 
 ![Usage](usage.png)
 
-
-
+---
 
 ### Basic Usage
 
