@@ -47,7 +47,7 @@
    - **Cause**: The tool does not have the necessary permissions to read/write files or access certain directories.
    - **Solution**: Run the tool with elevated privileges using `sudo` or ensure the user has the necessary permissions.
      ```sh
-     sudo xaphan -u testphp.vulnweb.com --gau
+     sudo xaphan -u testphp.vulnweb.com -gau
      ```
 
 8. **Error: File not found**
