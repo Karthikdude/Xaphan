@@ -6,10 +6,19 @@
 
 Xaphan is a command-line tool designed to automate the detection of Cross-Site Scripting (XSS) vulnerabilities by identifying unfiltered parameters in web applications. It leverages various tools and APIs to fetch URLs, analyze them for potential XSS risks, and provide detailed reports. Xaphan is built to be efficient, easy to use, and highly customizable, making it a valuable asset for security professionals and developers alike.
 
+## Version 2.0 Highlights
+
+- **New Modern UI**: Improved banner display and progress indicators
+- **URL Saving Functionality**: Save URLs at different stages of the pipeline process
+- **Enhanced Tool Integration**: Better compatibility with Gxss, kxss and uro tools
+- **Cross-Platform Support**: Improved support for both Windows and Unix-based systems
+- **More Detailed Output**: Better feedback during the scanning process
+
 ## Features
 
 - **Automated XSS Detection**: Automatically detects XSS vulnerabilities in web applications.
 - **Multiple URL Fetching Options**: Supports fetching URLs using Wayback Machine, gau, and other custom methods.
+- **URL Saving Functionality**: Save collected URLs at different stages (raw, after GF, after URO).
 - **Detailed Reporting**: Provides detailed and JSON formatted reports of the findings.
 - **Verbose Output**: Offers verbose output for detailed inspection.
 - **HTTP Response Status Check**: Checks the HTTP response status codes of the URLs.
@@ -22,6 +31,7 @@ Xaphan is a command-line tool designed to automate the detection of Cross-Site S
 - **URL Filtering**: Excludes URLs containing specific patterns.
 - **Retry Mechanism**: Automatically retries failed requests.
 - **HTML Reports**: Generates visually appealing HTML reports with statistics.
+- **Cross-Platform Compatibility**: Works seamlessly across Windows, Linux, and macOS.
 
 ## Installation
 
@@ -72,12 +82,20 @@ To install Xaphan, follow these steps:
 
 To scan a single domain:
 ```sh
-xaphan -url testphp.vulnweb.com [-wayback] or [-gau]
+xaphan -url testphp.vulnweb.com -wayback
+```
+or
+```sh
+xaphan -url testphp.vulnweb.com -gau
 ```
 
 To scan a list of domains from a file:
 ```sh
-xaphan -list domains.txt [-wayback] or [-gau]
+xaphan -list domains.txt -wayback
+```
+or
+```sh
+xaphan -list domains.txt -gau
 ```
 
 ### Options
@@ -105,30 +123,49 @@ xaphan -list domains.txt [-wayback] or [-gau]
 ### Example
 
 ```sh
-xaphan -url testphp.vulnweb.com --gau --json output.json
+xaphan -url testphp.vulnweb.com -gau -json output.json
 ```
 
 ### Additional Examples
 
 Scan a domain using wayback with HTML report:
 ```sh
-xaphan -url testphp.vulnweb.com --wayback --html report.html
+xaphan -url testphp.vulnweb.com -wayback -html report.html
 ```
 
 Save URLs at different stages of processing:
 ```sh
-xaphan -url testphp.vulnweb.com --gau --save raw-urls.txt --save-gf gf-urls.txt --save-uro uro-urls.txt
+xaphan -url testphp.vulnweb.com -gau -save raw-urls.txt -save-gf gf-urls.txt -save-uro uro-urls.txt
 ```
 
 Scan with proxy and exclude certain paths:
 ```sh
-xaphan -url testphp.vulnweb.com --gau --proxy http://127.0.0.1:8080 --exclude login,admin,static
+xaphan -url testphp.vulnweb.com -gau -proxy http://127.0.0.1:8080 -exclude login,admin,static
 ```
 
 Scan multiple domains with custom timeout and retry:
 ```sh
-xaphan -list domains.txt --gau --timeout 60 --retry 5 --t 100
+xaphan -list domains.txt -gau -timeout 60 -retry 5 -t 100
 ```
+
+## URL Saving Functionality
+
+Version 2.0 introduces the ability to save URLs at different stages of the processing pipeline:
+
+- `-save filename.txt`: Saves the raw URLs collected from Wayback Machine or GAU
+- `-save-gf filename.txt`: Saves URLs after they've been filtered by GF's XSS pattern matcher
+- `-save-uro filename.txt`: Saves URLs after they've been optimized by URO
+
+The saved files will include the domain name and stage in the filename, for example:
+- `filename-example.com-raw.txt`
+- `filename-example.com-gf.txt`
+- `filename-example.com-uro.txt`
+
+This functionality is particularly useful for:
+- Debugging the scanning process
+- Using the collected URLs with other tools
+- Running multiple analyses on the same set of URLs
+- Creating a dataset of potentially vulnerable endpoints
 
 ## Tools
 
@@ -167,8 +204,30 @@ The HTML report provides a visual representation of the scan results, including:
 To generate an HTML report, use the `-html` flag followed by the output file name:
 
 ```sh
-xaphan -url testphp.vulnweb.com --gau --html report.html
+xaphan -url testphp.vulnweb.com -gau -html report.html
 ```
+
+## Changelog
+
+### Version 2.0.0
+- New modern UI with improved banner display
+- Added URL saving functionality at different pipeline stages
+- Enhanced tool integration with better command handling
+- Improved cross-platform support
+- Fixed issues with GAU, Gxss and kxss integration
+- Better handling of command outputs and error messages
+
+### Version 1.1.0
+- Added HTML report generation
+- Improved error handling
+- Enhanced user agent randomization 
+- Added proxy support
+- Added retry mechanism for failed requests
+
+### Version 1.0.0
+- Initial release
+- Basic XSS scanning functionality
+- Support for Wayback Machine and GAU URL collection
 
 ## Contributing
 

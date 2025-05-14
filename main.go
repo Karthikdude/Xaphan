@@ -127,7 +127,7 @@ func init() {
 }
 
 func displayBanner() {
-	version := "v1.1.0"
+	version := "v2.0.0"
 	
 	fmt.Println()
 	fmt.Println("  " + colorizeText("✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧", "cyan"))
@@ -1026,20 +1026,29 @@ func runPipeline(domain string, useWayback bool, useGau bool) []string {
 		colorizeText("⟳", "cyan"),
 		colorizeText(fmt.Sprintf("%d", len(batches)), "white"))
 
+	// Show a single progress line for batch processing
+	fmt.Printf("  %s Processing batches: ", colorizeText("⟳", "cyan"))
+	
 	// Channel to collect results
 	resultChan := make(chan []string, len(batches))
 
 	// Process batches concurrently
 	var wg sync.WaitGroup
+	var processedBatches int32 = 0
+	
 	for i, batch := range batches {
 		wg.Add(1)
 		go func(batchNumber int, batch []string) {
 			defer wg.Done()
-			fmt.Printf("  %s Testing batch %d/%d (%d URLs)...\n", 
+			
+			// Update the batch progress counter
+			atomic.AddInt32(&processedBatches, 1)
+			fmt.Printf("\r  %s Processing batches: %d/%d completed", 
 				colorizeText("⟳", "cyan"),
-				batchNumber+1, 
-				len(batches),
-				len(batch))
+				atomic.LoadInt32(&processedBatches), 
+				len(batches))
+			
+			// Process the batch without verbose output
 			gxssURLs := processBatchWithGxss(batch)
 			kxssURLs := processBatchWithKxss(gxssURLs)
 			resultChan <- kxssURLs
@@ -1058,6 +1067,10 @@ func runPipeline(domain string, useWayback bool, useGau bool) []string {
 		finalURLs = append(finalURLs, result...)
 	}
 
+	// Clear the progress line and print the final result
+	fmt.Printf("\r  %s All batches processed successfully           \n", 
+		colorizeText("✓", "green"))
+		
 	fmt.Printf("  %s Found %s potential XSS vulnerabilities in %s\n\n", 
 		colorizeText("✓", "green"),
 		colorizeText(fmt.Sprintf("%d", len(finalURLs)), 
@@ -1100,8 +1113,6 @@ func processBatchWithGxss(batch []string) []string {
 	// Create temporary file with batch URLs
 	tmpFile, err := ioutil.TempFile("", "gxss-urls-*.txt")
 	if err != nil {
-		fmt.Printf("  %s Failed to create temp file for Gxss: %v\n", 
-			colorizeText("✗", "red"), err)
 		return []string{}
 	}
 	defer os.Remove(tmpFile.Name())
@@ -1113,40 +1124,21 @@ func processBatchWithGxss(batch []string) []string {
 	}
 	tmpFile.Close()
 	
-	// Run Gxss tool with appropriate flags (Gxss doesn't use -file flag)
-	fmt.Printf("  %s Running Gxss on %d URLs...\n", 
-		colorizeText("⟳", "cyan"), 
-		len(batch))
-	
-	// Use cat to pipe the content to Gxss instead of using a file flag
+	// Run Gxss tool without verbose output
 	cmd := exec.Command("bash", "-c", "cat "+tmpFile.Name()+" | Gxss")
 	output, err := cmd.CombinedOutput()
 	
 	if err != nil {
-		fmt.Printf("  %s Gxss error: %v\n", 
-			colorizeText("✗", "red"), 
-			err)
-		fmt.Printf("  %s Gxss output: %s\n", 
-			colorizeText("!", "yellow"),
-			string(output))
-		
-		// If bash is not available, try another approach
+		// Try alternative method without verbose output
 		if runtime.GOOS == "windows" {
-			fmt.Printf("  %s Trying Windows method for Gxss...\n", 
-				colorizeText("⟳", "cyan"))
-			
-			// On Windows, we can try using PowerShell to read the file and pipe it
 			cmd = exec.Command("powershell", "-Command", "Get-Content "+tmpFile.Name()+" | Gxss")
 			output, err = cmd.CombinedOutput()
 			
 			if err != nil {
-				fmt.Printf("  %s Windows method for Gxss failed: %v\n", 
-					colorizeText("✗", "red"), 
-					err)
-				return batch // Return input batch if all methods fail
+				return batch
 			}
 		} else {
-			return batch // Return the original batch if we can't process it
+			return batch
 		}
 	}
 	
@@ -1161,10 +1153,6 @@ func processBatchWithGxss(batch []string) []string {
 		}
 	}
 	
-	fmt.Printf("  %s Gxss found %d potential vulnerable URLs\n", 
-		colorizeText("✓", "green"), 
-		len(filtered))
-	
 	return filtered
 }
 
@@ -1176,8 +1164,6 @@ func processBatchWithKxss(batch []string) []string {
 	// Create temporary file with batch URLs
 	tmpFile, err := ioutil.TempFile("", "kxss-urls-*.txt")
 	if err != nil {
-		fmt.Printf("  %s Failed to create temp file for kxss: %v\n", 
-			colorizeText("✗", "red"), err)
 		return batch
 	}
 	defer os.Remove(tmpFile.Name())
@@ -1189,40 +1175,21 @@ func processBatchWithKxss(batch []string) []string {
 	}
 	tmpFile.Close()
 	
-	// Run kxss tool
-	fmt.Printf("  %s Running kxss on %d URLs...\n", 
-		colorizeText("⟳", "cyan"), 
-		len(batch))
-	
-	// Use cat to pipe the content to kxss
+	// Run kxss tool without verbose output
 	cmd := exec.Command("bash", "-c", "cat "+tmpFile.Name()+" | kxss")
 	output, err := cmd.CombinedOutput()
 	
 	if err != nil {
-		fmt.Printf("  %s kxss error: %v\n", 
-			colorizeText("✗", "red"), 
-			err)
-		fmt.Printf("  %s kxss output: %s\n", 
-			colorizeText("!", "yellow"),
-			string(output))
-		
-		// If bash is not available, try another approach
+		// Try alternative method without verbose output
 		if runtime.GOOS == "windows" {
-			fmt.Printf("  %s Trying Windows method for kxss...\n", 
-				colorizeText("⟳", "cyan"))
-			
-			// On Windows, we can try using PowerShell to read the file and pipe it
 			cmd = exec.Command("powershell", "-Command", "Get-Content "+tmpFile.Name()+" | kxss")
 			output, err = cmd.CombinedOutput()
 			
 			if err != nil {
-				fmt.Printf("  %s Windows method for kxss failed: %v\n", 
-					colorizeText("✗", "red"), 
-					err)
-				return batch // Return input batch if all methods fail
+				return batch
 			}
 		} else {
-			return batch // Return the original batch if we can't process it
+			return batch
 		}
 	}
 	
@@ -1236,10 +1203,6 @@ func processBatchWithKxss(batch []string) []string {
 			filtered = append(filtered, line)
 		}
 	}
-	
-	fmt.Printf("  %s kxss found %d potential vulnerable URLs\n", 
-		colorizeText("✓", "green"), 
-		len(filtered))
 	
 	return filtered
 }
