@@ -43,6 +43,9 @@ var (
 	excludeFlag         string
 	timeoutFlag         int
 	retryFlag           int
+	saveFlag            string
+	saveGfFlag          string
+	saveUroFlag         string
 
 	// Internal variables
 	processedDomains    int64 // Counter for processed domains
@@ -83,6 +86,9 @@ func init() {
 	flag.StringVar(&excludeFlag, "exclude", "", "Exclude specific patterns from crawling.")
 	flag.IntVar(&timeoutFlag, "timeout", DefaultTimeout, "Timeout for URL collection.")
 	flag.IntVar(&retryFlag, "retry", DefaultRetryAttempts, "Number of retry attempts for failed requests.")
+	flag.StringVar(&saveFlag, "save", "", "Save raw URLs collected from Wayback/GAU to a file.")
+	flag.StringVar(&saveGfFlag, "save-gf", "", "Save URLs after GF XSS filtering to a file.")
+	flag.StringVar(&saveUroFlag, "save-uro", "", "Save URLs after URO optimization to a file.")
 
 	// Initialize the logger
 	log = logrus.New()
@@ -124,19 +130,19 @@ func displayBanner() {
 	version := "v1.1.0"
 	
 	fmt.Println()
-	fmt.Println(colorizeText("  ╔════════════════════════════════════════════════════════════════╗", "cyan"))
-	fmt.Println(colorizeText("  ║                                                                ║", "cyan"))
-	fmt.Println(colorizeText("  ║", "cyan") + "    " + colorizeText("██╗  ██╗ █████╗ ██████╗ ██╗  ██╗ █████╗ ███╗   ██╗", "red") + "    " + colorizeText("║", "cyan"))
-	fmt.Println(colorizeText("  ║", "cyan") + "    " + colorizeText("╚██╗██╔╝██╔══██╗██╔══██╗██║  ██║██╔══██╗████╗  ██║", "red") + "    " + colorizeText("║", "cyan"))
-	fmt.Println(colorizeText("  ║", "cyan") + "     " + colorizeText("╚███╔╝ ███████║██████╔╝███████║███████║██╔██╗ ██║", "red") + "    " + colorizeText("║", "cyan"))
-	fmt.Println(colorizeText("  ║", "cyan") + "     " + colorizeText("██╔██╗ ██╔══██║██╔═══╝ ██╔══██║██╔══██║██║╚██╗██║", "red") + "    " + colorizeText("║", "cyan"))
-	fmt.Println(colorizeText("  ║", "cyan") + "    " + colorizeText("██╔╝ ██╗██║  ██║██║     ██║  ██║██║  ██║██║ ╚████║", "red") + "    " + colorizeText("║", "cyan"))
-	fmt.Println(colorizeText("  ║", "cyan") + "    " + colorizeText("╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝", "red") + "    " + colorizeText("║", "cyan"))
-	fmt.Println(colorizeText("  ║                                                                ║", "cyan"))
-	fmt.Println(colorizeText("  ║", "cyan") + "            " + colorizeText("XSS Vulnerability Scanner", "white") + "    " + colorizeText(version, "green") + "                   " + colorizeText("║", "cyan"))
-	fmt.Println(colorizeText("  ║                                                                ║", "cyan"))
-	fmt.Println(colorizeText("  ║", "cyan") + "            " + colorizeText("Developed by Karthik S Sathyan", "green") + "                      " + colorizeText("║", "cyan"))
-	fmt.Println(colorizeText("  ╚════════════════════════════════════════════════════════════════╝", "cyan"))
+	fmt.Println("  " + colorizeText("✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧", "cyan"))
+	fmt.Println()
+	fmt.Println("      " + colorizeText("██╗  ██╗ █████╗ ██████╗ ██╗  ██╗ █████╗ ███╗   ██╗", "red"))
+	fmt.Println("      " + colorizeText("╚██╗██╔╝██╔══██╗██╔══██╗██║  ██║██╔══██╗████╗  ██║", "red"))
+	fmt.Println("       " + colorizeText("╚███╔╝ ███████║██████╔╝███████║███████║██╔██╗ ██║", "red"))
+	fmt.Println("       " + colorizeText("██╔██╗ ██╔══██║██╔═══╝ ██╔══██║██╔══██║██║╚██╗██║", "red"))
+	fmt.Println("      " + colorizeText("██╔╝ ██╗██║  ██║██║     ██║  ██║██║  ██║██║ ╚████║", "red"))
+	fmt.Println("      " + colorizeText("╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝", "red"))
+	fmt.Println()
+	fmt.Println("      " + colorizeText("✦", "yellow") + " " + colorizeText("XSS Vulnerability Scanner", "white") + " " + colorizeText(version, "green") + " " + colorizeText("✦", "yellow"))
+	fmt.Println("      " + colorizeText("Developed by Karthik S Sathyan", "green"))
+	fmt.Println()
+	fmt.Println("  " + colorizeText("✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧", "cyan"))
 	fmt.Println()
 }
 
@@ -748,6 +754,46 @@ func showProgress(current, total int64) {
 		percentage, current, total)
 }
 
+// saveURLsToFile saves a list of URLs to a file
+func saveURLsToFile(urls []string, filename string, suffix string) error {
+	if filename == "" {
+		return nil
+	}
+	
+	// Add suffix to filename if provided
+	outputFile := filename
+	if suffix != "" {
+		// Check if the filename already has an extension
+		ext := filepath.Ext(filename)
+		if ext != "" {
+			// Insert suffix before extension
+			outputFile = filename[:len(filename)-len(ext)] + "-" + suffix + ext
+		} else {
+			// Just append suffix
+			outputFile = filename + "-" + suffix
+		}
+	}
+	
+	file, err := os.Create(outputFile)
+	if err != nil {
+		return errors.Wrap(err, "failed to create file")
+	}
+	defer file.Close()
+	
+	for _, url := range urls {
+		if url != "" {
+			file.WriteString(url + "\n")
+		}
+	}
+	
+	fmt.Printf("  %s Saved %d URLs to %s\n", 
+		colorizeText("✓", "green"),
+		len(urls),
+		colorizeText(outputFile, "green"))
+	
+	return nil
+}
+
 func runPipeline(domain string, useWayback bool, useGau bool) []string {
 	var urls []string
 	var err error
@@ -809,6 +855,15 @@ func runPipeline(domain string, useWayback bool, useGau bool) []string {
 			colorizeText(domain, "white"),
 			timeoutFlag)
 	}
+	
+	// Save raw URLs if requested
+	if saveFlag != "" {
+		if err := saveURLsToFile(urls, saveFlag, domain+"-raw"); err != nil {
+			fmt.Printf("  %s Failed to save raw URLs: %v\n", 
+				colorizeText("✗", "red"), 
+				err)
+		}
+	}
 
 	// Create temporary file for gf xss
 	tmpFile, err := ioutil.TempFile("", "xaphan-urls-*.txt")
@@ -828,6 +883,7 @@ func runPipeline(domain string, useWayback bool, useGau bool) []string {
 	
 	// Run gf xss
 	fmt.Printf("  %s Running GF XSS pattern matcher...\n", colorizeText("⟳", "cyan"))
+	// Use gf directly with file as argument (gf xss works this way)
 	cmd := exec.Command("gf", "xss", tmpFile.Name())
 	output, err := cmd.CombinedOutput()
 	
@@ -837,8 +893,16 @@ func runPipeline(domain string, useWayback bool, useGau bool) []string {
 		
 		// Try alternative method with cat and pipeline
 		fmt.Printf("  %s Trying alternative gf method...\n", colorizeText("⟳", "cyan"))
-		pipecmd := exec.Command("bash", "-c", "cat "+tmpFile.Name()+" | gf xss")
-		output, err = pipecmd.CombinedOutput()
+		
+		if runtime.GOOS == "windows" {
+			// On Windows try with PowerShell
+			cmd = exec.Command("powershell", "-Command", "Get-Content "+tmpFile.Name()+" | gf xss")
+		} else {
+			// On Unix-like systems use bash
+			cmd = exec.Command("bash", "-c", "cat "+tmpFile.Name()+" | gf xss")
+		}
+		
+		output, err = cmd.CombinedOutput()
 		if err != nil {
 			fmt.Printf("  %s Alternative gf method failed: %v\n", colorizeText("✗", "red"), err)
 			return []string{}
@@ -862,6 +926,15 @@ func runPipeline(domain string, useWayback bool, useGau bool) []string {
 			colorizeText("!", "yellow"))
 		return []string{}
 	}
+	
+	// Save GF results if requested
+	if saveGfFlag != "" {
+		if err := saveURLsToFile(filteredGfURLs, saveGfFlag, domain+"-gf"); err != nil {
+			fmt.Printf("  %s Failed to save GF URLs: %v\n", 
+				colorizeText("✗", "red"), 
+				err)
+		}
+	}
 
 	// Create temporary file for uro
 	uroTmpFile, err := ioutil.TempFile("", "xaphan-uro-*.txt")
@@ -881,20 +954,39 @@ func runPipeline(domain string, useWayback bool, useGau bool) []string {
 
 	// Run uro
 	fmt.Printf("  %s Running URO for URL optimization...\n", colorizeText("⟳", "cyan"))
-	cmd = exec.Command("uro", "-file", uroTmpFile.Name())
+	// URO doesn't support -file flag, it expects input to be piped in or specified with -i
+	cmd = exec.Command("bash", "-c", "cat "+uroTmpFile.Name()+" | uro")
 	output, err = cmd.CombinedOutput()
 	
 	if err != nil {
 		fmt.Printf("  %s Failed to run uro: %v\n", colorizeText("✗", "red"), err)
 		fmt.Printf("  %s Output: %s\n", colorizeText("!", "yellow"), string(output))
 		
-		// Try alternative method with cat and pipeline
-		fmt.Printf("  %s Trying alternative uro method...\n", colorizeText("⟳", "cyan"))
-		pipecmd := exec.Command("bash", "-c", "cat "+uroTmpFile.Name()+" | uro")
-		output, err = pipecmd.CombinedOutput()
-		if err != nil {
-			fmt.Printf("  %s Alternative uro method failed: %v\n", colorizeText("✗", "red"), err)
-			return filteredGfURLs
+		// Try alternative method for Windows
+		if runtime.GOOS == "windows" {
+			fmt.Printf("  %s Trying Windows method for uro...\n", colorizeText("⟳", "cyan"))
+			cmd = exec.Command("powershell", "-Command", "Get-Content "+uroTmpFile.Name()+" | uro")
+			output, err = cmd.CombinedOutput()
+			if err != nil {
+				fmt.Printf("  %s Windows method for uro failed: %v\n", colorizeText("✗", "red"), err)
+				// Try using uro with -i flag
+				cmd = exec.Command("uro", "-i", uroTmpFile.Name())
+				output, err = cmd.CombinedOutput()
+				if err != nil {
+					fmt.Printf("  %s All uro methods failed, using original GF results\n", 
+						colorizeText("!", "yellow"))
+					return filteredGfURLs
+				}
+			}
+		} else {
+			// Try using uro with -i flag for Unix
+			cmd = exec.Command("uro", "-i", uroTmpFile.Name())
+			output, err = cmd.CombinedOutput()
+			if err != nil {
+				fmt.Printf("  %s All uro methods failed, using original GF results\n", 
+					colorizeText("!", "yellow"))
+				return filteredGfURLs
+			}
 		}
 	}
 	
@@ -914,6 +1006,15 @@ func runPipeline(domain string, useWayback bool, useGau bool) []string {
 		fmt.Printf("  %s URO returned no results, using original GF results\n", 
 			colorizeText("!", "yellow"))
 		filteredUroURLs = filteredGfURLs
+	}
+	
+	// Save URO results if requested
+	if saveUroFlag != "" {
+		if err := saveURLsToFile(filteredUroURLs, saveUroFlag, domain+"-uro"); err != nil {
+			fmt.Printf("  %s Failed to save URO URLs: %v\n", 
+				colorizeText("✗", "red"), 
+				err)
+		}
 	}
 
 	// Determine batch size based on the number of URLs after uro
@@ -1012,12 +1113,13 @@ func processBatchWithGxss(batch []string) []string {
 	}
 	tmpFile.Close()
 	
-	// Run Gxss tool with file input
+	// Run Gxss tool with appropriate flags (Gxss doesn't use -file flag)
 	fmt.Printf("  %s Running Gxss on %d URLs...\n", 
 		colorizeText("⟳", "cyan"), 
 		len(batch))
 	
-	cmd := exec.Command("Gxss", "-file", tmpFile.Name())
+	// Use cat to pipe the content to Gxss instead of using a file flag
+	cmd := exec.Command("bash", "-c", "cat "+tmpFile.Name()+" | Gxss")
 	output, err := cmd.CombinedOutput()
 	
 	if err != nil {
@@ -1028,18 +1130,23 @@ func processBatchWithGxss(batch []string) []string {
 			colorizeText("!", "yellow"),
 			string(output))
 		
-		// If Gxss fails, try with cat and pipeline
-		fmt.Printf("  %s Trying alternative Gxss method...\n", 
-			colorizeText("⟳", "cyan"))
-		
-		pipecmd := exec.Command("bash", "-c", "cat "+tmpFile.Name()+" | Gxss")
-		output, err = pipecmd.CombinedOutput()
-		
-		if err != nil {
-			fmt.Printf("  %s Alternative Gxss method failed: %v\n", 
-				colorizeText("✗", "red"), 
-				err)
-			return batch // Return input batch if all methods fail
+		// If bash is not available, try another approach
+		if runtime.GOOS == "windows" {
+			fmt.Printf("  %s Trying Windows method for Gxss...\n", 
+				colorizeText("⟳", "cyan"))
+			
+			// On Windows, we can try using PowerShell to read the file and pipe it
+			cmd = exec.Command("powershell", "-Command", "Get-Content "+tmpFile.Name()+" | Gxss")
+			output, err = cmd.CombinedOutput()
+			
+			if err != nil {
+				fmt.Printf("  %s Windows method for Gxss failed: %v\n", 
+					colorizeText("✗", "red"), 
+					err)
+				return batch // Return input batch if all methods fail
+			}
+		} else {
+			return batch // Return the original batch if we can't process it
 		}
 	}
 	
@@ -1082,12 +1189,13 @@ func processBatchWithKxss(batch []string) []string {
 	}
 	tmpFile.Close()
 	
-	// Run kxss tool with file input
+	// Run kxss tool
 	fmt.Printf("  %s Running kxss on %d URLs...\n", 
 		colorizeText("⟳", "cyan"), 
 		len(batch))
 	
-	cmd := exec.Command("kxss", "-file", tmpFile.Name())
+	// Use cat to pipe the content to kxss
+	cmd := exec.Command("bash", "-c", "cat "+tmpFile.Name()+" | kxss")
 	output, err := cmd.CombinedOutput()
 	
 	if err != nil {
@@ -1098,18 +1206,23 @@ func processBatchWithKxss(batch []string) []string {
 			colorizeText("!", "yellow"),
 			string(output))
 		
-		// If kxss fails, try with cat and pipeline
-		fmt.Printf("  %s Trying alternative kxss method...\n", 
-			colorizeText("⟳", "cyan"))
-		
-		pipecmd := exec.Command("bash", "-c", "cat "+tmpFile.Name()+" | kxss")
-		output, err = pipecmd.CombinedOutput()
-		
-		if err != nil {
-			fmt.Printf("  %s Alternative kxss method failed: %v\n", 
-				colorizeText("✗", "red"), 
-				err)
-			return batch // Return input batch if all methods fail
+		// If bash is not available, try another approach
+		if runtime.GOOS == "windows" {
+			fmt.Printf("  %s Trying Windows method for kxss...\n", 
+				colorizeText("⟳", "cyan"))
+			
+			// On Windows, we can try using PowerShell to read the file and pipe it
+			cmd = exec.Command("powershell", "-Command", "Get-Content "+tmpFile.Name()+" | kxss")
+			output, err = cmd.CombinedOutput()
+			
+			if err != nil {
+				fmt.Printf("  %s Windows method for kxss failed: %v\n", 
+					colorizeText("✗", "red"), 
+					err)
+				return batch // Return input batch if all methods fail
+			}
+		} else {
+			return batch // Return the original batch if we can't process it
 		}
 	}
 	
@@ -1168,6 +1281,8 @@ func main() {
 		fmt.Println("  ./Xaphan -url example.com -gau")
 		fmt.Println("  ./Xaphan -url example.com -wayback -verbose")
 		fmt.Println("  ./Xaphan -list domains.txt -gau -t 10")
+		fmt.Println("  ./Xaphan -url example.com -gau -save urls.txt")
+		fmt.Println("  ./Xaphan -url example.com -gau -save-gf gf-results.txt -save-uro uro-results.txt")
 		fmt.Println("  ./Xaphan -list domains.txt -wayback -gau -response -html report.html")
 		return
 	}
@@ -1405,8 +1520,10 @@ func colorizedSeverity(severity, icon string) string {
 
 func printBoxedHeader(text string) {
 	width := len(text) + 4
-	fmt.Println("  ┌" + strings.Repeat("─", width) + "┐")
-	fmt.Println("  │ " + colorizeText(text, "white") + " │")
-	fmt.Println("  └" + strings.Repeat("─", width) + "┘")
+	fmt.Println()
+	fmt.Println("  " + colorizeText(strings.Repeat("✧", width), "cyan"))
+	fmt.Println("  " + colorizeText("✦", "yellow") + " " + colorizeText(text, "white") + " " + colorizeText("✦", "yellow"))
+	fmt.Println("  " + colorizeText(strings.Repeat("✧", width), "cyan"))
+	fmt.Println()
 }
 

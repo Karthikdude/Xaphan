@@ -91,6 +91,9 @@ xaphan -list domains.txt [-wayback] or [-gau]
 - `-json`: Save results in JSON format.
 - `-detailed`: Save detailed report to a file.
 - `-html`: Save results in HTML format with visualizations.
+- `-save`: Save raw URLs collected from Wayback/GAU to a file.
+- `-save-gf`: Save URLs after GF XSS filtering to a file.
+- `-save-uro`: Save URLs after URO optimization to a file.
 - `-proxy`: Use a proxy for HTTP requests (e.g., http://127.0.0.1:8080).
 - `-depth`: Set the maximum scan depth (default: 2).
 - `-exclude`: Exclude URLs containing specific patterns (comma-separated).
@@ -102,7 +105,7 @@ xaphan -list domains.txt [-wayback] or [-gau]
 ### Example
 
 ```sh
-xaphan -uurl testphp.vulnweb.com --gau  --json output.json
+xaphan -url testphp.vulnweb.com --gau --json output.json
 ```
 
 ### Additional Examples
@@ -110,6 +113,11 @@ xaphan -uurl testphp.vulnweb.com --gau  --json output.json
 Scan a domain using wayback with HTML report:
 ```sh
 xaphan -url testphp.vulnweb.com --wayback --html report.html
+```
+
+Save URLs at different stages of processing:
+```sh
+xaphan -url testphp.vulnweb.com --gau --save raw-urls.txt --save-gf gf-urls.txt --save-uro uro-urls.txt
 ```
 
 Scan with proxy and exclude certain paths:
