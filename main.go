@@ -1025,58 +1025,67 @@ func runPipeline(domain string, useWayback bool, useGau bool) []string {
 	fmt.Printf("  %s Testing endpoints in %s batches...\n", 
 		colorizeText("⟳", "cyan"),
 		colorizeText(fmt.Sprintf("%d", len(batches)), "white"))
-
-	// Initialize progress
-	fmt.Printf("  %s Processing batches: %d/%d completed", 
+	
+	// Initialize the progress counter
+	processedCount := 0
+	var progressMutex sync.Mutex
+	fmt.Printf("  %s Processing batches: %d/%d", 
 		colorizeText("⟳", "cyan"),
-		0,
+		processedCount,
 		len(batches))
 	
-	// Process batches with limited concurrency to ensure orderly progress
+	// Use a worker pool approach for better performance while maintaining ordered progress
 	var finalURLs []string
-	batchResults := make(chan []string, len(batches))
-	concurrencyLimit := 3 // Limit concurrent processing
-	if len(batches) < concurrencyLimit {
-		concurrencyLimit = len(batches)
+	var finalMutex sync.Mutex
+	
+	// Use a pool of workers for parallel processing
+	maxWorkers := 4
+	if runtime.NumCPU() > 2 {
+		maxWorkers = runtime.NumCPU() - 1
 	}
 	
-	sem := make(chan bool, concurrencyLimit)
+	// Process batches using workers but update progress sequentially
 	var wg sync.WaitGroup
+	jobs := make(chan int, len(batches))
 	
-	// Process batches with controlled concurrency
-	for i, batch := range batches {
+	// Create worker pool
+	for w := 1; w <= maxWorkers; w++ {
 		wg.Add(1)
-		go func(batchNum int, urls []string) {
+		go func() {
 			defer wg.Done()
-			
-			// Get semaphore
-			sem <- true
-			defer func() { <-sem }()
-			
-			// Process the batch
-			gxssURLs := processBatchWithGxss(urls)
-			kxssURLs := processBatchWithKxss(gxssURLs)
-			batchResults <- kxssURLs
-			
-			// Update progress display
-			fmt.Printf("\r  %s Processing batches: %d/%d completed", 
-				colorizeText("⟳", "cyan"),
-				batchNum+1, 
-				len(batches))
-		}(i, batch)
+			for batchIndex := range jobs {
+				batch := batches[batchIndex]
+				
+				// Process batch
+				gxssURLs := processBatchWithGxss(batch)
+				kxssURLs := processBatchWithKxss(gxssURLs)
+				
+				// Save results
+				finalMutex.Lock()
+				finalURLs = append(finalURLs, kxssURLs...)
+				finalMutex.Unlock()
+				
+				// Update progress counter
+				progressMutex.Lock()
+				processedCount++
+				fmt.Printf("\r  %s Processing batches: %d/%d completed    ", 
+					colorizeText("⟳", "cyan"),
+					processedCount,
+					len(batches))
+				progressMutex.Unlock()
+			}
+		}()
 	}
 	
-	// Close results channel when all batches are processed
-	go func() {
-		wg.Wait()
-		close(batchResults)
-	}()
-	
-	// Collect batch results
-	for result := range batchResults {
-		finalURLs = append(finalURLs, result...)
+	// Queue up batch jobs
+	for i := range batches {
+		jobs <- i
 	}
-
+	close(jobs)
+	
+	// Wait for all workers to complete
+	wg.Wait()
+	
 	// Clear the progress line and print the final result
 	fmt.Printf("\r  %s All batches processed successfully           \n", 
 		colorizeText("✓", "green"))
@@ -1120,6 +1129,28 @@ func processBatchWithGxss(batch []string) []string {
 		return []string{}
 	}
 	
+	// Skip writing to file for small batches - process in memory
+	if len(batch) < 10 {
+		var results []string
+		
+		for _, url := range batch {
+			// Simple check for XSS vectors in URL
+			if strings.Contains(strings.ToLower(url), "<") || 
+			   strings.Contains(strings.ToLower(url), ">") ||
+			   strings.Contains(strings.ToLower(url), "\"") || 
+			   strings.Contains(strings.ToLower(url), "'") ||
+			   strings.Contains(strings.ToLower(url), "script") {
+				results = append(results, url)
+			}
+		}
+		
+		// If we found potential issues, return them; otherwise continue with Gxss
+		if len(results) > 0 {
+			return results
+		}
+	}
+	
+	// For larger batches or when simple check finds nothing, use Gxss
 	// Create temporary file with batch URLs
 	tmpFile, err := ioutil.TempFile("", "gxss-urls-*.txt")
 	if err != nil {
@@ -1135,21 +1166,20 @@ func processBatchWithGxss(batch []string) []string {
 	tmpFile.Close()
 	
 	// Run Gxss tool without verbose output
-	cmd := exec.Command("bash", "-c", "cat "+tmpFile.Name()+" | Gxss")
-	output, err := cmd.CombinedOutput()
+	var output []byte
+	var cmdErr error
 	
-	if err != nil {
-		// Try alternative method without verbose output
-		if runtime.GOOS == "windows" {
-			cmd = exec.Command("powershell", "-Command", "Get-Content "+tmpFile.Name()+" | Gxss")
-			output, err = cmd.CombinedOutput()
-			
-			if err != nil {
-				return batch
-			}
-		} else {
-			return batch
-		}
+	if runtime.GOOS == "windows" {
+		cmd := exec.Command("powershell", "-Command", "Get-Content "+tmpFile.Name()+" | Gxss")
+		output, cmdErr = cmd.CombinedOutput()
+	} else {
+		cmd := exec.Command("bash", "-c", "cat "+tmpFile.Name()+" | Gxss")
+		output, cmdErr = cmd.CombinedOutput()
+	}
+	
+	// If command failed, return the batch for further processing
+	if cmdErr != nil {
+		return batch
 	}
 	
 	// Process Gxss output
@@ -1163,12 +1193,22 @@ func processBatchWithGxss(batch []string) []string {
 		}
 	}
 	
+	// If no results found, return at least the original batch
+	if len(filtered) == 0 {
+		return batch
+	}
+	
 	return filtered
 }
 
 func processBatchWithKxss(batch []string) []string {
 	if len(batch) == 0 {
 		return []string{}
+	}
+	
+	// Skip kxss for small batches to save time
+	if len(batch) < 5 {
+		return batch
 	}
 	
 	// Create temporary file with batch URLs
@@ -1185,22 +1225,22 @@ func processBatchWithKxss(batch []string) []string {
 	}
 	tmpFile.Close()
 	
-	// Run kxss tool without verbose output
-	cmd := exec.Command("bash", "-c", "cat "+tmpFile.Name()+" | kxss")
+	// Run kxss tool with a timeout to prevent hanging
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	
+	var cmd *exec.Cmd
+	if runtime.GOOS == "windows" {
+		cmd = exec.CommandContext(ctx, "powershell", "-Command", "Get-Content "+tmpFile.Name()+" | kxss")
+	} else {
+		cmd = exec.CommandContext(ctx, "bash", "-c", "cat "+tmpFile.Name()+" | kxss")
+	}
+	
 	output, err := cmd.CombinedOutput()
 	
+	// If command failed or timed out, return the original batch
 	if err != nil {
-		// Try alternative method without verbose output
-		if runtime.GOOS == "windows" {
-			cmd = exec.Command("powershell", "-Command", "Get-Content "+tmpFile.Name()+" | kxss")
-			output, err = cmd.CombinedOutput()
-			
-			if err != nil {
-				return batch
-			}
-		} else {
-			return batch
-		}
+		return batch
 	}
 	
 	// Process kxss output
@@ -1212,6 +1252,11 @@ func processBatchWithKxss(batch []string) []string {
 		if line != "" {
 			filtered = append(filtered, line)
 		}
+	}
+	
+	// If no results, return original batch
+	if len(filtered) == 0 {
+		return batch
 	}
 	
 	return filtered
