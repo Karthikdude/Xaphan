@@ -381,7 +381,25 @@ func contains(slice []string, item string) bool {
 
 func extractXSSDetails(urls []string, verbose bool, checkStatus bool) []map[string]interface{} {
 	var xssDetails []map[string]interface{}
-	for _, url := range urls {
+	
+	if len(urls) == 0 {
+		return xssDetails
+	}
+	
+	// Show progress message
+	fmt.Printf("  %s Analyzing %s potential vulnerabilities...\n", 
+		colorizeText("⟳", "cyan"),
+		colorizeText(fmt.Sprintf("%d", len(urls)), "white"))
+	
+	for i, url := range urls {
+		// Show progress percentage
+		if len(urls) > 10 && i % 5 == 0 {
+			percentage := float64(i) / float64(len(urls)) * 100
+			fmt.Printf("\r  %s Analysis progress: %.1f%% (%d/%d)  ", 
+				colorizeText("⟳", "cyan"),
+				percentage, i, len(urls))
+		}
+		
 		if strings.Contains(url, "Unfiltered: [") {
 			unfilteredSymbols := strings.Split(strings.Trim(strings.Split(url, "Unfiltered: [")[1], "]"), " ")
 			severity, severityColor := determineSeverity(unfilteredSymbols)
@@ -389,8 +407,11 @@ func extractXSSDetails(urls []string, verbose bool, checkStatus bool) []map[stri
 			if checkStatus {
 				var err error
 				statusCode, err = checkURLStatus(url)
-				if err != nil {
-					fmt.Printf("\033[31m[ERROR] Failed to check status for %s: %v\033[0m\n", url, err)
+				if err != nil && verbose {
+					fmt.Printf("\n  %s Failed to check status for %s: %v\n", 
+						colorizeText("✗", "red"), 
+						colorizeText(url, "white"), 
+						err)
 				}
 			}
 			status := fmt.Sprintf("[Status: %d]", statusCode)
@@ -403,17 +424,26 @@ func extractXSSDetails(urls []string, verbose bool, checkStatus bool) []map[stri
 				"severity_color": severityColor,
 			})
 			if verbose {
-				fmt.Printf("\033[36m[INFO] Processed: %s\033[0m\n", url)
-				fmt.Printf("\033[36m[INFO] Unfiltered Symbols: %v\033[0m\n", unfilteredSymbols)
-				fmt.Printf("\033[36m[INFO] Severity: %s\033[0m\n", severity)
+				// Print with enhanced UI if verbose is enabled
+				fmt.Printf("\n  %s %s\n", colorizeText("Found:", "cyan"), url)
+				fmt.Printf("  %s %v\n", colorizeText("Unfiltered:", "cyan"), unfilteredSymbols)
+				fmt.Printf("  %s %s\n", colorizeText("Severity:", "cyan"), severity)
 				if checkStatus {
-					fmt.Printf("\033[36m[INFO] Status: %s\033[0m\n", status)
+					fmt.Printf("  %s %s\n", colorizeText("Status:", "cyan"), status)
 				}
-				fmt.Printf("\033[36m[INFO] Timestamp: %s\033[0m\n", timestamp)
-				fmt.Printf("\033[36m%s\033[0m\n", strings.Repeat("-", 50))
+				fmt.Printf("  %s %s\n", colorizeText("Timestamp:", "cyan"), timestamp)
+				fmt.Println(strings.Repeat("─", 80))
 			}
 		}
 	}
+	
+	// Clear progress line and print summary
+	if len(urls) > 10 {
+		fmt.Printf("\r\033[K  %s Analysis complete: Found %s vulnerabilities\n", 
+			colorizeText("✓", "green"),
+			colorizeText(fmt.Sprintf("%d", len(xssDetails)), len(xssDetails) > 0 ? "red" : "green"))
+	}
+	
 	return xssDetails
 }
 
@@ -808,25 +838,55 @@ func splitIntoBatches(urls []string, batchSize int) [][]string {
 }
 
 func processBatchWithGxss(batch []string) []string {
+	if len(batch) == 0 {
+		return []string{}
+	}
+	
 	cmd := exec.Command("Gxss")
 	cmd.Stdin = strings.NewReader(strings.Join(batch, "\n"))
 	output, err := cmd.Output()
 	if err != nil {
-		fmt.Printf("\033[31m[ERROR] Failed to run Gxss: %v\033[0m\n", err)
+		fmt.Printf("  %s Failed to run Gxss: %v\n", colorizeText("✗", "red"), err)
 		return []string{}
 	}
-	return strings.Split(string(output), "\n")
+	
+	results := strings.Split(string(output), "\n")
+	
+	// Filter out empty lines
+	var filtered []string
+	for _, line := range results {
+		if line != "" {
+			filtered = append(filtered, line)
+		}
+	}
+	
+	return filtered
 }
 
 func processBatchWithKxss(batch []string) []string {
+	if len(batch) == 0 {
+		return []string{}
+	}
+	
 	cmd := exec.Command("kxss")
 	cmd.Stdin = strings.NewReader(strings.Join(batch, "\n"))
 	output, err := cmd.Output()
 	if err != nil {
-		fmt.Printf("\033[31m[ERROR] Failed to run kxss: %v\033[0m\n", err)
+		fmt.Printf("  %s Failed to run kxss: %v\n", colorizeText("✗", "red"), err)
 		return []string{}
 	}
-	return strings.Split(string(output), "\n")
+	
+	results := strings.Split(string(output), "\n")
+	
+	// Filter out empty lines
+	var filtered []string
+	for _, line := range results {
+		if line != "" {
+			filtered = append(filtered, line)
+		}
+	}
+	
+	return filtered
 }
 
 func worker(id int, jobs <-chan string, results chan<- map[string]interface{}, wg *sync.WaitGroup) {
@@ -1070,3 +1130,4 @@ func printBoxedHeader(text string) {
 	fmt.Println("  │ " + colorizeText(text, "white") + " │")
 	fmt.Println("  └" + strings.Repeat("─", width) + "┘")
 }
+
