@@ -441,7 +441,13 @@ func extractXSSDetails(urls []string, verbose bool, checkStatus bool) []map[stri
 	if len(urls) > 10 {
 		fmt.Printf("\r\033[K  %s Analysis complete: Found %s vulnerabilities\n", 
 			colorizeText("✓", "green"),
-			colorizeText(fmt.Sprintf("%d", len(xssDetails)), len(xssDetails) > 0 ? "red" : "green"))
+			colorizeText(fmt.Sprintf("%d", len(xssDetails)), 
+				func() string {
+					if len(xssDetails) > 0 {
+						return "red"
+					}
+					return "green"
+				}()))
 	}
 	
 	return xssDetails
@@ -811,7 +817,13 @@ func runPipeline(domain string, useWayback bool, useGau bool) []string {
 
 	fmt.Printf("\n  %s Found %s potential XSS vulnerabilities in %s\n\n", 
 		colorizeText("✓", "green"),
-		colorizeText(fmt.Sprintf("%d", len(finalURLs)), len(finalURLs) > 0 ? "red" : "green"),
+		colorizeText(fmt.Sprintf("%d", len(finalURLs)), 
+			func() string {
+				if len(finalURLs) > 0 {
+					return "red"
+				}
+				return "green"
+			}()),
 		colorizeText(domain, "white"))
 
 	return finalURLs
