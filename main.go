@@ -121,19 +121,26 @@ func init() {
 }
 
 func displayBanner() {
-	banner := `
-[31m██╗  ██╗ █████╗ ██████╗ ██╗  ██╗ █████╗ ███╗   ██╗
-╚██╗██╔╝██╔══██╗██╔══██╗██║  ██║██╔══██╗████╗  ██║
- ╚███╔╝ ███████║██████╔╝███████║███████║██╔██╗ ██║
- ██╔██╗ ██╔══██║██╔═══╝ ██╔══██║██╔══██║██║╚██╗██║
-██╔╝ ██╗██║  ██║██║     ██║  ██║██║  ██║██║ ╚████║
-╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝[0m
-[32m-----------------------------------------------------
-           Developed by Karthik S Sathyan
------------------------------------------------------[0m
-[34mLinkedIn: https://www.linkedin.com/in/karthik-s-sathyan/[0m
-`
-	fmt.Println(banner)
+	version := "v1.1.0"
+	
+	fmt.Println()
+	fmt.Println(colorizeText("  ╔═══════════════════════════════════════════════════════════╗", "cyan"))
+	fmt.Println(colorizeText("  ║                                                           ║", "cyan"))
+	fmt.Println(colorizeText("  ║", "cyan") + colorizeText("  ██╗  ██╗ █████╗ ██████╗ ██╗  ██╗ █████╗ ███╗   ██╗  ", "red") + colorizeText("║", "cyan"))
+	fmt.Println(colorizeText("  ║", "cyan") + colorizeText("  ╚██╗██╔╝██╔══██╗██╔══██╗██║  ██║██╔══██╗████╗  ██║  ", "red") + colorizeText("║", "cyan"))
+	fmt.Println(colorizeText("  ║", "cyan") + colorizeText("   ╚███╔╝ ███████║██████╔╝███████║███████║██╔██╗ ██║  ", "red") + colorizeText("║", "cyan"))
+	fmt.Println(colorizeText("  ║", "cyan") + colorizeText("   ██╔██╗ ██╔══██║██╔═══╝ ██╔══██║██╔══██║██║╚██╗██║  ", "red") + colorizeText("║", "cyan"))
+	fmt.Println(colorizeText("  ║", "cyan") + colorizeText("  ██╔╝ ██╗██║  ██║██║     ██║  ██║██║  ██║██║ ╚████║  ", "red") + colorizeText("║", "cyan"))
+	fmt.Println(colorizeText("  ║", "cyan") + colorizeText("  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝  ", "red") + colorizeText("║", "cyan"))
+	fmt.Println(colorizeText("  ║                                                           ║", "cyan"))
+	fmt.Printf(colorizeText("  ║", "cyan") + "  %s    %s  " + colorizeText("║", "cyan") + "\n", 
+		colorizeText("XSS Vulnerability Scanner", "white"),
+		colorizeText(version, "green"))
+	fmt.Println(colorizeText("  ║                                                           ║", "cyan"))
+	fmt.Printf(colorizeText("  ║", "cyan") + "  %s " + colorizeText("║", "cyan") + "\n", 
+		colorizeText("Developed by Karthik S Sathyan", "green"))
+	fmt.Println(colorizeText("  ╚═══════════════════════════════════════════════════════════╝", "cyan"))
+	fmt.Println()
 }
 
 // getRandomUserAgent returns a random user agent from the predefined list
@@ -412,25 +419,70 @@ func extractXSSDetails(urls []string, verbose bool, checkStatus bool) []map[stri
 
 func displayResults(xssDetails []map[string]interface{}, verbose bool, checkStatus bool) {
 	if len(xssDetails) == 0 {
-		fmt.Printf("\033[32m[INFO] No XSS vulnerabilities found.\033[0m\n")
+		fmt.Printf("\n  %s No XSS vulnerabilities found\n\n", colorizeText("✓", "green"))
 		return
 	}
+
+	// Count vulnerability types
+	var criticalCount, mediumCount, lowCount int
 	for _, detail := range xssDetails {
-		fmt.Printf("\033[32m[INFO] %s %s %s\033[0m\n", detail["timestamp"], detail["severity"], detail["url"])
-		if responseFlag {
-			fmt.Printf("\033[32m[INFO] %s\033[0m\n", detail["status"])
-		}
-		fmt.Println()
-		if verbose {
-			fmt.Printf("\033[36m[INFO] Unfiltered Symbols: %v\033[0m\n", strings.Split(strings.Trim(strings.Split(detail["url"].(string), "Unfiltered: [")[1], "]"), " "))
-			fmt.Printf("\033[36m[INFO] Severity: %s\033[0m\n", detail["severity"])
-			if responseFlag {
-				fmt.Printf("\033[36m[INFO] Status: %s\033[0m\n", detail["status"])
-			}
-			fmt.Printf("\033[36m[INFO] Timestamp: %s\033[0m\n", detail["timestamp"])
-			fmt.Printf("\033[36m%s\033[0m\n", strings.Repeat("-", 50))
+		severity := detail["severity"].(string)
+		if strings.Contains(severity, "CRITICAL") {
+			criticalCount++
+		} else if strings.Contains(severity, "MEDIUM") {
+			mediumCount++
+		} else if strings.Contains(severity, "LOW") {
+			lowCount++
 		}
 	}
+	
+	// Print summary header
+	fmt.Println()
+	printBoxedHeader("XSS SCAN RESULTS")
+	fmt.Printf("\n  Found:  %s Critical: %d  %s Medium: %d  %s Low: %d\n\n",
+		colorizeText("⚠", "red"), criticalCount,
+		colorizeText("⚠", "yellow"), mediumCount,
+		colorizeText("⚠", "blue"), lowCount)
+	
+	fmt.Println(strings.Repeat("─", 80))
+	
+	// Print results in a clean tabular format
+	for _, detail := range xssDetails {
+		timestamp := detail["timestamp"].(string)
+		severity := detail["severity"].(string)
+		url := detail["url"].(string)
+		status := detail["status"].(string)
+		
+		severityIcon := "✓"
+		if strings.Contains(severity, "CRITICAL") {
+			severityIcon = "⚠"
+		} else if strings.Contains(severity, "MEDIUM") {
+			severityIcon = "⚠"
+		} else if strings.Contains(severity, "LOW") {
+			severityIcon = "⚠"
+		}
+		
+		// Strip ANSI color codes from severity
+		plainSeverity := strings.Replace(strings.Replace(strings.Replace(severity, "\033[31m", "", -1), "\033[33m", "", -1), "\033[0m", "", -1)
+		plainSeverity = strings.Replace(strings.Replace(plainSeverity, "\033[34m", "", -1), "\033[32m", "", -1)
+		
+		// Print the timestamp and severity
+		fmt.Printf("  %s  %s  %s\n", timestamp, colorizedSeverity(plainSeverity, severityIcon), status)
+		
+		// Print the URL with proper indentation
+		fmt.Printf("  %s %s\n", colorizeText("URL:", "cyan"), url)
+		
+		// Print unfiltered symbols with proper formatting
+		if strings.Contains(url, "Unfiltered: [") {
+			unfilteredSymbols := strings.Split(strings.Trim(strings.Split(url, "Unfiltered: [")[1], "]"), " ")
+			fmt.Printf("  %s %s\n", colorizeText("Unfiltered:", "cyan"), strings.Join(unfilteredSymbols, ", "))
+		}
+		
+		fmt.Println(strings.Repeat("─", 80))
+	}
+	
+	// Print footer
+	fmt.Printf("\n  Total vulnerabilities found: %d\n\n", len(xssDetails))
 }
 
 func saveDetailedReport(xssDetails []map[string]interface{}, outputFile string) error {
@@ -583,29 +635,53 @@ func showProgress(current, total int64) {
 	percentage := float64(current) / float64(total) * 100
 	completed := int(float64(width) * float64(current) / float64(total))
 	
-	fmt.Printf("\r[%-40s] %.2f%% (%d/%d)", strings.Repeat("=", completed), percentage, current, total)
+	// Clear the line and position cursor at beginning
+	fmt.Printf("\r\033[K")
+	
+	// Display progress with color and symbols
+	progressBar := strings.Repeat("█", completed) + strings.Repeat("░", width-completed)
+	fmt.Printf("  %s [%s] %.1f%% (%d/%d)", 
+		colorizeText("Progress:", "cyan"),
+		colorizeText(progressBar, "cyan"), 
+		percentage, current, total)
 }
 
 func runPipeline(domain string, useWayback bool, useGau bool) []string {
 	var urls []string
 	var err error
 
+	// Display fetching message
+	fetchMethod := "GAU"
+	if useWayback {
+		fetchMethod = "Wayback Machine"
+	}
+	fmt.Printf("  %s Fetching URLs for %s using %s...\n", 
+		colorizeText("⟳", "cyan"), 
+		colorizeText(domain, "white"),
+		colorizeText(fetchMethod, "yellow"))
+
 	// Set a timeout for URL collection
-	timeout := time.After(3 * time.Minute)
+	timeout := time.After(time.Duration(timeoutFlag) * time.Second)
 	done := make(chan bool)
 
 	go func() {
 		if useWayback {
 			urls, err = fetchWaybackURLs(domain)
 			if err != nil {
-				fmt.Printf("\033[31m[ERROR] Failed to fetch URLs for %s: %v\033[0m\n", domain, err)
+				fmt.Printf("  %s Failed to fetch URLs for %s: %v\n", 
+					colorizeText("✗", "red"), 
+					colorizeText(domain, "white"), 
+					err)
 				done <- true
 				return
 			}
 		} else if useGau {
 			urls, err = fetchGauURLs(domain)
 			if err != nil {
-				fmt.Printf("\033[31m[ERROR] Failed to fetch URLs for %s: %v\033[0m\n", domain, err)
+				fmt.Printf("  %s Failed to fetch URLs for %s: %v\n", 
+					colorizeText("✗", "red"), 
+					colorizeText(domain, "white"), 
+					err)
 				done <- true
 				return
 			}
@@ -616,51 +692,79 @@ func runPipeline(domain string, useWayback bool, useGau bool) []string {
 	select {
 	case <-done:
 		if len(urls) == 0 {
+			fmt.Printf("  %s No URLs found for %s\n", 
+				colorizeText("!", "yellow"), 
+				colorizeText(domain, "white"))
 			return []string{}
 		}
+		fmt.Printf("  %s Found %s URLs for %s\n", 
+			colorizeText("✓", "green"), 
+			colorizeText(fmt.Sprintf("%d", len(urls)), "white"),
+			colorizeText(domain, "white"))
 	case <-timeout:
-		fmt.Printf("\033[33m[WARN] URL collection for %s is taking too long. Using collected URLs.\033[0m\n", domain)
+		fmt.Printf("  %s URL collection for %s timed out after %d seconds. Using collected URLs.\n", 
+			colorizeText("⚠", "yellow"), 
+			colorizeText(domain, "white"),
+			timeoutFlag)
 	}
 
+	// Show pipeline steps with real-time progress
+	
 	// Run gf xss
+	fmt.Printf("  %s Running GF XSS pattern matcher...\n", colorizeText("⟳", "cyan"))
 	cmd := exec.Command("gf", "xss")
 	cmd.Stdin = strings.NewReader(strings.Join(urls, "\n"))
 	output, err := cmd.Output()
 	if err != nil {
-		fmt.Printf("\033[31m[ERROR] Failed to run gf xss: %v\033[0m\n", err)
+		fmt.Printf("  %s Failed to run gf xss: %v\n", colorizeText("✗", "red"), err)
 		return []string{}
 	}
 	gfXssURLs := strings.Split(string(output), "\n")
+	fmt.Printf("  %s GF found %s potential XSS endpoints\n", 
+		colorizeText("✓", "green"),
+		colorizeText(fmt.Sprintf("%d", len(gfXssURLs)), "white"))
 
 	// Run uro
+	fmt.Printf("  %s Running URO for URL optimization...\n", colorizeText("⟳", "cyan"))
 	cmd = exec.Command("uro")
 	cmd.Stdin = strings.NewReader(strings.Join(gfXssURLs, "\n"))
 	output, err = cmd.Output()
 	if err != nil {
-		fmt.Printf("\033[31m[ERROR] Failed to run uro: %v\033[0m\n", err)
+		fmt.Printf("  %s Failed to run uro: %v\n", colorizeText("✗", "red"), err)
 		return []string{}
 	}
 	uroURLs := strings.Split(string(output), "\n")
+	fmt.Printf("  %s URO optimized to %s unique endpoints\n", 
+		colorizeText("✓", "green"),
+		colorizeText(fmt.Sprintf("%d", len(uroURLs)), "white"))
 
 	// Determine batch size based on the number of URLs after uro
 	batchSize := determineBatchSize(len(uroURLs))
-
+	
 	// Split URLs into batches
 	batches := splitIntoBatches(uroURLs, batchSize)
+	fmt.Printf("  %s Testing endpoints in %s batches...\n", 
+		colorizeText("⟳", "cyan"),
+		colorizeText(fmt.Sprintf("%d", len(batches)), "white"))
 
 	// Channel to collect results
 	resultChan := make(chan []string, len(batches))
 
 	// Process batches concurrently
 	var wg sync.WaitGroup
-	for _, batch := range batches {
+	for i, batch := range batches {
 		wg.Add(1)
-		go func(batch []string) {
+		go func(batchNumber int, batch []string) {
 			defer wg.Done()
+			fmt.Printf("  %s Testing batch %d/%d (%d URLs)...\r", 
+				colorizeText("⟳", "cyan"),
+				batchNumber+1, 
+				len(batches),
+				len(batch))
 			gxssURLs := processBatchWithGxss(batch)
 			kxssURLs := processBatchWithKxss(gxssURLs)
 			resultChan <- kxssURLs
-		}(batch)
+		}(i, batch)
 	}
 
 	// Wait for all goroutines to finish
@@ -674,6 +778,11 @@ func runPipeline(domain string, useWayback bool, useGau bool) []string {
 	for result := range resultChan {
 		finalURLs = append(finalURLs, result...)
 	}
+
+	fmt.Printf("\n  %s Found %s potential XSS vulnerabilities in %s\n\n", 
+		colorizeText("✓", "green"),
+		colorizeText(fmt.Sprintf("%d", len(finalURLs)), len(finalURLs) > 0 ? "red" : "green"),
+		colorizeText(domain, "white"))
 
 	return finalURLs
 }
@@ -724,14 +833,16 @@ func worker(id int, jobs <-chan string, results chan<- map[string]interface{}, w
 	defer wg.Done()
 	for domain := range jobs {
 		if urlFlag != "" {
-			fmt.Printf("\033[32m[INFO] Processing domain: %s\033[0m\n", domain)
+			fmt.Printf("\n  %s Processing domain: %s\n", colorizeText("▶", "cyan"), colorizeText(domain, "white"))
 		}
 		xssURLs := runPipeline(domain, waybackFlag, gauFlag)
 		if len(xssURLs) == 0 {
 			results <- map[string]interface{}{
 				"domain": domain,
 				"details": []map[string]interface{}{},
-				"error": fmt.Sprintf("\033[33m[WARNING]\033[0m No XSS vulnerabilities found for %s.\n", domain),
+				"error": fmt.Sprintf("\n  %s No XSS vulnerabilities found for %s\n", 
+					colorizeText("✓", "green"), 
+					colorizeText(domain, "white")),
 			}
 		} else {
 			xssDetails := extractXSSDetails(xssURLs, verboseFlag, responseFlag)
@@ -757,7 +868,7 @@ func main() {
 	// Parse excluded patterns if provided
 	if excludeFlag != "" {
 		excludedPatterns = strings.Split(excludeFlag, ",")
-		log.Infof("Excluding URLs containing: %v", excludedPatterns)
+		log.Infof("%s Excluding URLs containing: %v", colorizeText("[INFO]", "green"), excludedPatterns)
 	}
 
 	// Set log level based on verbose flag
@@ -773,20 +884,20 @@ func main() {
 	} else if listFlag != "" {
 		data, err := ioutil.ReadFile(listFlag)
 		if err != nil {
-			log.Fatalf("\033[31m[ERROR] File %s not found: %v\033[0m\n", listFlag, err)
+			log.Fatalf("%s File %s not found: %v", colorizeText("[ERROR]", "red"), listFlag, err)
 			return
 		}
 		domains = strings.Split(strings.TrimSpace(string(data)), "\n")
-		log.Infof("\033[32m[INFO] Total domains to scan: %d\033[0m\n", len(domains))
+		log.Infof("%s Total domains to scan: %d", colorizeText("[INFO]", "green"), len(domains))
 	}
 
 	if len(domains) == 0 {
-		log.Fatalf("\033[31m[ERROR] No domains to scan. Use -u or -l.\033[0m\n")
+		log.Fatalf("%s No domains to scan. Use -u or -l.", colorizeText("[ERROR]", "red"))
 		return
 	}
 
 	if !waybackFlag && !gauFlag {
-		log.Fatalf("\033[31m[ERROR] No tool specified to collect URLs. Use --wayback or --gau.\033[0m\n")
+		log.Fatalf("%s No tool specified to collect URLs. Use --wayback or --gau.", colorizeText("[ERROR]", "red"))
 		flag.Usage()
 		return
 	}
@@ -799,7 +910,7 @@ func main() {
 		}
 		if _, err := os.Stat(resultsDir); os.IsNotExist(err) {
 			if err := os.MkdirAll(resultsDir, 0755); err != nil {
-				log.Fatalf("\033[31m[ERROR] Failed to create results directory: %v\033[0m\n", err)
+				log.Fatalf("%s Failed to create results directory: %v", colorizeText("[ERROR]", "red"), err)
 				return
 			}
 		}
@@ -820,11 +931,12 @@ func main() {
 
 	// Display rate limit message once
 	if waybackFlag {
-		log.Infof("\033[32m[INFO] Rate limit detected for webarchive.org. Delaying request by %s.\033[0m\n", rateLimitDelay)
+		log.Infof("%s Rate limit detected for webarchive.org. Delaying request by %s.", 
+			colorizeText("[INFO]", "green"), rateLimitDelay)
 	}
 
 	// Create workers
-	log.Infof("\033[32m[INFO] Starting %d workers.\033[0m\n", numWorkers)
+	log.Infof("%s Starting %d workers", colorizeText("[INFO]", "green"), numWorkers)
 	for w := 1; w <= numWorkers; w++ {
 		wg.Add(1)
 		go worker(w, jobs, results, &wg)
@@ -832,7 +944,9 @@ func main() {
 
 	// Display initial progress
 	totalDomains := int64(len(domains))
-	fmt.Printf("\033[32m[INFO] Processing domains: 0/%d (0%%)\033[0m\n", totalDomains)
+	fmt.Println()
+	printBoxedHeader("SCAN PROGRESS")
+	fmt.Printf("\n  Processing domains: 0/%d (0%%)\n\n", totalDomains)
 
 	// Send jobs with rate limiting for Wayback Machine
 	for _, domain := range domains {
@@ -869,7 +983,7 @@ func main() {
 	for result := range results {
 		domain := result["domain"].(string)
 		if details, ok := result["details"].([]map[string]interface{}); ok {
-			fmt.Printf("\n\033[32m[INFO] Results for domain: %s\033[0m\n", domain)
+			fmt.Printf("\n%s Results for domain: %s\n", colorizeText("[INFO]", "green"), domain)
 			displayResults(details, verboseFlag, responseFlag)
 			allResults = append(allResults, details...)
 		} else if errMsg, ok := result["error"].(string); ok {
@@ -882,34 +996,77 @@ func main() {
 		fmt.Println()
 	}
 
+	// Print summary of scan results
+	fmt.Println()
+	printBoxedHeader("SCAN SUMMARY")
+	fmt.Printf("\n  %s Total domains scanned: %d\n", colorizeText("▶", "cyan"), atomic.LoadInt64(&processedDomains))
+	fmt.Printf("  %s Total vulnerabilities found: %d\n\n", colorizeText("▶", "cyan"), len(allResults))
+
 	if detailedFlag != "" {
 		err := saveDetailedReport(allResults, detailedFlag)
 		if err != nil {
-			log.Fatalf("\033[31m[ERROR] Failed to save detailed report: %v\033[0m\n", err)
+			log.Fatalf("%s Failed to save detailed report: %v", colorizeText("[ERROR]", "red"), err)
 		} else {
-			log.Infof("\033[32m[INFO] Detailed report saved to %s\033[0m\n", detailedFlag)
+			log.Infof("%s Detailed report saved to %s", colorizeText("[INFO]", "green"), detailedFlag)
 		}
 	}
 
 	if jsonFlag != "" {
 		err := saveJSONOutput(allResults, jsonFlag)
 		if err != nil {
-			log.Fatalf("\033[31m[ERROR] Failed to save JSON report: %v\033[0m\n", err)
+			log.Fatalf("%s Failed to save JSON report: %v", colorizeText("[ERROR]", "red"), err)
 		} else {
-			log.Infof("\033[32m[INFO] JSON report saved to %s\033[0m\n", jsonFlag)
+			log.Infof("%s JSON report saved to %s", colorizeText("[INFO]", "green"), jsonFlag)
 		}
 	}
 
 	if htmlReportFlag != "" {
 		err := saveHTMLReport(allResults, htmlReportFlag)
 		if err != nil {
-			log.Fatalf("\033[31m[ERROR] Failed to save HTML report: %v\033[0m\n", err)
+			log.Fatalf("%s Failed to save HTML report: %v", colorizeText("[ERROR]", "red"), err)
 		} else {
-			log.Infof("\033[32m[INFO] HTML report saved to %s\033[0m\n", htmlReportFlag)
+			log.Infof("%s HTML report saved to %s", colorizeText("[INFO]", "green"), htmlReportFlag)
 		}
 	}
+}
 
-	// Print the total number of processed domains
-	log.Infof("\033[32m[INFO] Total processed domains: %d\033[0m\n", atomic.LoadInt64(&processedDomains))
-	log.Infof("\033[32m[INFO] Total XSS vulnerabilities found: %d\033[0m\n", len(allResults))
+// Helper functions for the enhanced UI
+
+func colorizeText(text, color string) string {
+	switch color {
+	case "red":
+		return "\033[31m" + text + "\033[0m"
+	case "green":
+		return "\033[32m" + text + "\033[0m"
+	case "yellow":
+		return "\033[33m" + text + "\033[0m"
+	case "blue":
+		return "\033[34m" + text + "\033[0m"
+	case "magenta":
+		return "\033[35m" + text + "\033[0m"
+	case "cyan":
+		return "\033[36m" + text + "\033[0m"
+	case "white":
+		return "\033[97m" + text + "\033[0m"
+	default:
+		return text
+	}
+}
+
+func colorizedSeverity(severity, icon string) string {
+	if strings.Contains(severity, "CRITICAL") {
+		return colorizeText(icon + " " + severity, "red")
+	} else if strings.Contains(severity, "MEDIUM") {
+		return colorizeText(icon + " " + severity, "yellow")
+	} else if strings.Contains(severity, "LOW") {
+		return colorizeText(icon + " " + severity, "blue")
+	}
+	return colorizeText(icon + " " + severity, "green")
+}
+
+func printBoxedHeader(text string) {
+	width := len(text) + 4
+	fmt.Println("  ┌" + strings.Repeat("─", width) + "┐")
+	fmt.Println("  │ " + colorizeText(text, "white") + " │")
+	fmt.Println("  └" + strings.Repeat("─", width) + "┘")
 }
