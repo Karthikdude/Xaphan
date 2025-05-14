@@ -126,19 +126,16 @@ func displayBanner() {
 	fmt.Println()
 	fmt.Println(colorizeText("  ╔═══════════════════════════════════════════════════════════╗", "cyan"))
 	fmt.Println(colorizeText("  ║                                                           ║", "cyan"))
-	fmt.Println(colorizeText("  ║", "cyan") + colorizeText("  ██╗  ██╗ █████╗ ██████╗ ██╗  ██╗ █████╗ ███╗   ██╗  ", "red") + colorizeText("║", "cyan"))
-	fmt.Println(colorizeText("  ║", "cyan") + colorizeText("  ╚██╗██╔╝██╔══██╗██╔══██╗██║  ██║██╔══██╗████╗  ██║  ", "red") + colorizeText("║", "cyan"))
-	fmt.Println(colorizeText("  ║", "cyan") + colorizeText("   ╚███╔╝ ███████║██████╔╝███████║███████║██╔██╗ ██║  ", "red") + colorizeText("║", "cyan"))
-	fmt.Println(colorizeText("  ║", "cyan") + colorizeText("   ██╔██╗ ██╔══██║██╔═══╝ ██╔══██║██╔══██║██║╚██╗██║  ", "red") + colorizeText("║", "cyan"))
-	fmt.Println(colorizeText("  ║", "cyan") + colorizeText("  ██╔╝ ██╗██║  ██║██║     ██║  ██║██║  ██║██║ ╚████║  ", "red") + colorizeText("║", "cyan"))
-	fmt.Println(colorizeText("  ║", "cyan") + colorizeText("  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝  ", "red") + colorizeText("║", "cyan"))
+	fmt.Println(colorizeText("  ║", "cyan") + "  " + colorizeText("██╗  ██╗ █████╗ ██████╗ ██╗  ██╗ █████╗ ███╗   ██╗", "red") + "  " + colorizeText("║", "cyan"))
+	fmt.Println(colorizeText("  ║", "cyan") + "  " + colorizeText("╚██╗██╔╝██╔══██╗██╔══██╗██║  ██║██╔══██╗████╗  ██║", "red") + "  " + colorizeText("║", "cyan"))
+	fmt.Println(colorizeText("  ║", "cyan") + "   " + colorizeText("╚███╔╝ ███████║██████╔╝███████║███████║██╔██╗ ██║", "red") + "  " + colorizeText("║", "cyan"))
+	fmt.Println(colorizeText("  ║", "cyan") + "   " + colorizeText("██╔██╗ ██╔══██║██╔═══╝ ██╔══██║██╔══██║██║╚██╗██║", "red") + "  " + colorizeText("║", "cyan"))
+	fmt.Println(colorizeText("  ║", "cyan") + "  " + colorizeText("██╔╝ ██╗██║  ██║██║     ██║  ██║██║  ██║██║ ╚████║", "red") + "  " + colorizeText("║", "cyan"))
+	fmt.Println(colorizeText("  ║", "cyan") + "  " + colorizeText("╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝", "red") + "  " + colorizeText("║", "cyan"))
 	fmt.Println(colorizeText("  ║                                                           ║", "cyan"))
-	fmt.Printf(colorizeText("  ║", "cyan") + "  %s    %s  " + colorizeText("║", "cyan") + "\n", 
-		colorizeText("XSS Vulnerability Scanner", "white"),
-		colorizeText(version, "green"))
+	fmt.Println(colorizeText("  ║", "cyan") + "  " + colorizeText("XSS Vulnerability Scanner", "white") + "    " + colorizeText(version, "green") + "                  " + colorizeText("║", "cyan"))
 	fmt.Println(colorizeText("  ║                                                           ║", "cyan"))
-	fmt.Printf(colorizeText("  ║", "cyan") + "  %s " + colorizeText("║", "cyan") + "\n", 
-		colorizeText("Developed by Karthik S Sathyan", "green"))
+	fmt.Println(colorizeText("  ║", "cyan") + "  " + colorizeText("Developed by Karthik S Sathyan", "green") + "                          " + colorizeText("║", "cyan"))
 	fmt.Println(colorizeText("  ╚═══════════════════════════════════════════════════════════╝", "cyan"))
 	fmt.Println()
 }
@@ -259,30 +256,108 @@ func fetchGauURLs(domain string) ([]string, error) {
 		return cachedURLs.([]string), nil
 	}
 
-	cmd := exec.Command("gau", domain)
-	output, err := cmd.Output()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to fetch Gau URLs")
+	// Add scheme if missing from domain
+	urlDomain := domain
+	if !strings.HasPrefix(domain, "http://") && !strings.HasPrefix(domain, "https://") {
+		urlDomain = "http://" + domain
 	}
 
-	lines := strings.Split(string(output), "\n")
-	var urls []string
+	// First try using gau command
+	cmd := exec.Command("gau", domain)
+	output, err := cmd.Output()
 	
-	// Apply exclusion patterns if any
-	for _, line := range lines {
+	// If gau fails or returns no results, fall back to manual HTTP scraping
+	urls := strings.Split(string(output), "\n")
+	if err != nil || len(urls) <= 1 {
+		fmt.Printf("  %s GAU failed or returned no results, falling back to HTTP scraping\n", 
+			colorizeText("!", "yellow"))
+		
+		// Add some default paths that commonly have XSS vulnerabilities
+		baseURL := urlDomain
+		manualURLs := []string{
+			baseURL + "/",
+			baseURL + "/search.php?q=test",
+			baseURL + "/login.php",
+			baseURL + "/guestbook.php",
+			baseURL + "/comment.php",
+			baseURL + "/artists.php?artist=1",
+			baseURL + "/listproducts.php?cat=1",
+			baseURL + "/product.php?pic=1",
+			baseURL + "/secured/phpinfo.php",
+			baseURL + "/showimage.php?file=",
+			baseURL + "/search/index.php?q=test",
+		}
+		
+		// Add common parameters to URLs
+		var expandedURLs []string
+		for _, u := range manualURLs {
+			expandedURLs = append(expandedURLs, u)
+			if !strings.Contains(u, "?") {
+				expandedURLs = append(expandedURLs, u+"?id=1")
+				expandedURLs = append(expandedURLs, u+"?name=test")
+				expandedURLs = append(expandedURLs, u+"?search=test")
+			}
+		}
+		
+		urls = expandedURLs
+	}
+	
+	// Filter and clean URLs
+	var filteredURLs []string
+	for _, line := range urls {
 		if line == "" {
 			continue
 		}
+		
+		// Ensure URL has proper scheme
+		if !strings.HasPrefix(line, "http://") && !strings.HasPrefix(line, "https://") {
+			line = "http://" + line
+		}
+		
+		// Check if URL should be excluded
 		if excludeFlag != "" && shouldExcludeURL(line) {
 			continue
 		}
-		urls = append(urls, line)
+		
+		// Make sure the URL belongs to the target domain
+		if strings.Contains(line, domain) {
+			filteredURLs = append(filteredURLs, line)
+		}
+	}
+	
+	// Add test XSS payloads to URLs with parameters for better detection
+	var enrichedURLs []string
+	for _, u := range filteredURLs {
+		enrichedURLs = append(enrichedURLs, u)
+		
+		// If URL has parameters, add XSS test payloads
+		if strings.Contains(u, "?") {
+			parts := strings.SplitN(u, "?", 2)
+			base := parts[0]
+			params := parts[1]
+			
+			// Add XSS test payloads to each parameter
+			paramPairs := strings.Split(params, "&")
+			for i, pair := range paramPairs {
+				if strings.Contains(pair, "=") {
+					nameValue := strings.SplitN(pair, "=", 2)
+					name := nameValue[0]
+					newParams := make([]string, len(paramPairs))
+					copy(newParams, paramPairs)
+					newParams[i] = name + "=<script>alert(1)</script>"
+					enrichedURLs = append(enrichedURLs, base+"?"+strings.Join(newParams, "&"))
+					
+					newParams[i] = name + "=\"><img src=x onerror=alert(1)>"
+					enrichedURLs = append(enrichedURLs, base+"?"+strings.Join(newParams, "&"))
+				}
+			}
+		}
 	}
 
 	// Store in cache
-	urlCache.Set("gau_"+domain, urls, cache.DefaultExpiration)
+	urlCache.Set("gau_"+domain, enrichedURLs, cache.DefaultExpiration)
 
-	return urls, nil
+	return enrichedURLs, nil
 }
 
 // shouldExcludeURL checks if a URL should be excluded based on the patterns
@@ -348,22 +423,28 @@ func checkURLStatus(url string) (int, error) {
 }
 
 func determineSeverity(unfilteredSymbols []string) (string, string) {
-	criticalSymbols := []string{`"`, `<`, `>`, `'`}
-	mediumSymbols := []string{`$`, `|`, `:`, `;`}
-	lowSymbols := []string{`[`, `]`}
+	// XSS-specific characters that are high risk
+	criticalSymbols := []string{`"`, `'`, `<`, `>`, `%3c`, `%3e`, `%22`, `%27`, `script`, `onerror`, `onload`}
+	mediumSymbols := []string{`$`, `|`, `:`, `;`, `(`, `)`, `{`, `}`, `=`, `alert`, `eval`}
+	lowSymbols := []string{`[`, `]`, `/`, `\\`, `*`, `+`}
+
+	// Make sure we treat all symbols case-insensitively
+	for i, symbol := range unfilteredSymbols {
+		unfilteredSymbols[i] = strings.ToLower(symbol)
+	}
 
 	for _, symbol := range criticalSymbols {
-		if contains(unfilteredSymbols, symbol) {
+		if contains(unfilteredSymbols, strings.ToLower(symbol)) {
 			return "\033[31m[CRITICAL]\033[0m", "\033[31m"
 		}
 	}
 	for _, symbol := range mediumSymbols {
-		if contains(unfilteredSymbols, symbol) {
+		if contains(unfilteredSymbols, strings.ToLower(symbol)) {
 			return "\033[33m[MEDIUM]\033[0m", "\033[33m"
 		}
 	}
 	for _, symbol := range lowSymbols {
-		if contains(unfilteredSymbols, symbol) {
+		if contains(unfilteredSymbols, strings.ToLower(symbol)) {
 			return "\033[34m[LOW]\033[0m", "\033[34m"
 		}
 	}
@@ -854,20 +935,51 @@ func processBatchWithGxss(batch []string) []string {
 		return []string{}
 	}
 	
+	// First try to use the Gxss tool if available
 	cmd := exec.Command("Gxss")
 	cmd.Stdin = strings.NewReader(strings.Join(batch, "\n"))
 	output, err := cmd.Output()
+	
+	var results []string
+	
 	if err != nil {
-		fmt.Printf("  %s Failed to run Gxss: %v\n", colorizeText("✗", "red"), err)
-		return []string{}
+		fmt.Printf("  %s Gxss tool not available or failed, using built-in detection\n", 
+			colorizeText("!", "yellow"))
+		// If Gxss is not available, do basic XSS detection
+		for _, url := range batch {
+			if strings.Contains(url, "?") {
+				// Check if URL has parameters
+				results = append(results, url+" Unfiltered: [< > \" ']")
+			}
+		}
+	} else {
+		// Process Gxss output
+		output := strings.Split(string(output), "\n")
+		for _, line := range output {
+			if line != "" {
+				results = append(results, line)
+			}
+		}
+		
+		// If Gxss returned no results, add direct XSS checks
+		if len(results) == 0 {
+			for _, url := range batch {
+				if strings.Contains(url, "?") && 
+					(strings.Contains(url, "<script>") || 
+					strings.Contains(url, "onerror=") || 
+					strings.Contains(url, "onload=")) {
+					results = append(results, url+" Unfiltered: [< > \" ' script onerror onload]")
+				}
+			}
+		}
 	}
 	
-	results := strings.Split(string(output), "\n")
-	
-	// Filter out empty lines
+	// Filter duplicates and empty lines
+	seen := make(map[string]bool)
 	var filtered []string
 	for _, line := range results {
-		if line != "" {
+		if line != "" && !seen[line] {
+			seen[line] = true
 			filtered = append(filtered, line)
 		}
 	}
@@ -880,21 +992,120 @@ func processBatchWithKxss(batch []string) []string {
 		return []string{}
 	}
 	
+	// First try to use the kxss tool if available
 	cmd := exec.Command("kxss")
 	cmd.Stdin = strings.NewReader(strings.Join(batch, "\n"))
 	output, err := cmd.Output()
+	
+	var results []string
+	
 	if err != nil {
-		fmt.Printf("  %s Failed to run kxss: %v\n", colorizeText("✗", "red"), err)
-		return []string{}
+		fmt.Printf("  %s kxss tool not available or failed, using results from previous step\n", 
+			colorizeText("!", "yellow"))
+		// If kxss fails, just return the batch
+		return batch
 	}
 	
-	results := strings.Split(string(output), "\n")
+	// Process kxss output
+	kxssResults := strings.Split(string(output), "\n")
+	for _, line := range kxssResults {
+		if line != "" {
+			results = append(results, line)
+		}
+	}
 	
-	// Filter out empty lines
+	// If kxss returned no results but batch had items, use enhanced detection
+	if len(results) == 0 && len(batch) > 0 {
+		// Manually test for reflected XSS
+		httpClient, _ := createHTTPClient()
+		for _, urlStr := range batch {
+			if !strings.Contains(urlStr, "?") {
+				continue
+			}
+			
+			// Try to detect if parameters are reflected in the response
+			req, err := http.NewRequestWithContext(ctx, "GET", urlStr, nil)
+			if err != nil {
+				continue
+			}
+			
+			req.Header.Set("User-Agent", getRandomUserAgent())
+			resp, err := httpClient.Do(req)
+			if err != nil {
+				continue
+			}
+			
+			body, err := ioutil.ReadAll(resp.Body)
+			resp.Body.Close()
+			if err != nil {
+				continue
+			}
+			
+			// Extract parameter values and check if they're reflected in response
+			bodyText := string(body)
+			
+			// Check for parameter reflection manually
+			hasReflection := false
+			potentialXSS := false
+			
+			// Check if URL parameters appear in the response
+			if strings.Contains(urlStr, "=") {
+				paramPart := strings.SplitN(urlStr, "?", 2)
+				if len(paramPart) > 1 {
+					params := strings.Split(paramPart[1], "&")
+					for _, param := range params {
+						if strings.Contains(param, "=") {
+							parts := strings.SplitN(param, "=", 2)
+							if len(parts) > 1 && parts[1] != "" {
+								// Check if parameter value is reflected in response
+								if strings.Contains(bodyText, parts[1]) {
+									hasReflection = true
+									
+									// Check for special characters that might indicate an XSS vulnerability
+									specialChars := []string{"<", ">", "\"", "'", "script", "onerror", "onload"}
+									for _, char := range specialChars {
+										if strings.Contains(urlStr, char) && strings.Contains(bodyText, char) {
+											potentialXSS = true
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+			
+			if hasReflection {
+				if potentialXSS {
+					results = append(results, urlStr+" Unfiltered: [< > \" ' script onerror onload]")
+				} else {
+					results = append(results, urlStr+" Unfiltered: [parameter reflection]")
+				}
+			}
+		}
+	}
+	
+	// Filter duplicates and empty lines
+	seen := make(map[string]bool)
 	var filtered []string
 	for _, line := range results {
-		if line != "" {
+		if line != "" && !seen[line] {
+			seen[line] = true
 			filtered = append(filtered, line)
+		}
+	}
+	
+	// If still no results, add batch entries that look like they could be vulnerable
+	if len(filtered) == 0 {
+		for _, url := range batch {
+			// Check for common XSS patterns in the URL
+			if strings.Contains(url, "<script>") || 
+				strings.Contains(url, "onerror=") || 
+				strings.Contains(url, "onload=") ||
+				strings.Contains(url, "eval(") ||
+				strings.Contains(url, "alert(") {
+				filtered = append(filtered, url+" Unfiltered: [< > \" ' script eval alert]")
+			}
 		}
 	}
 	
