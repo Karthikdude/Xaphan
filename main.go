@@ -1026,44 +1026,54 @@ func runPipeline(domain string, useWayback bool, useGau bool) []string {
 		colorizeText("⟳", "cyan"),
 		colorizeText(fmt.Sprintf("%d", len(batches)), "white"))
 
-	// Show a single progress line for batch processing
-	fmt.Printf("  %s Processing batches: ", colorizeText("⟳", "cyan"))
+	// Initialize progress
+	fmt.Printf("  %s Processing batches: %d/%d completed", 
+		colorizeText("⟳", "cyan"),
+		0,
+		len(batches))
 	
-	// Channel to collect results
-	resultChan := make(chan []string, len(batches))
-
-	// Process batches concurrently
+	// Process batches with limited concurrency to ensure orderly progress
+	var finalURLs []string
+	batchResults := make(chan []string, len(batches))
+	concurrencyLimit := 3 // Limit concurrent processing
+	if len(batches) < concurrencyLimit {
+		concurrencyLimit = len(batches)
+	}
+	
+	sem := make(chan bool, concurrencyLimit)
 	var wg sync.WaitGroup
-	var processedBatches int32 = 0
 	
+	// Process batches with controlled concurrency
 	for i, batch := range batches {
 		wg.Add(1)
-		go func(batchNumber int, batch []string) {
+		go func(batchNum int, urls []string) {
 			defer wg.Done()
 			
-			// Update the batch progress counter
-			atomic.AddInt32(&processedBatches, 1)
+			// Get semaphore
+			sem <- true
+			defer func() { <-sem }()
+			
+			// Process the batch
+			gxssURLs := processBatchWithGxss(urls)
+			kxssURLs := processBatchWithKxss(gxssURLs)
+			batchResults <- kxssURLs
+			
+			// Update progress display
 			fmt.Printf("\r  %s Processing batches: %d/%d completed", 
 				colorizeText("⟳", "cyan"),
-				atomic.LoadInt32(&processedBatches), 
+				batchNum+1, 
 				len(batches))
-			
-			// Process the batch without verbose output
-			gxssURLs := processBatchWithGxss(batch)
-			kxssURLs := processBatchWithKxss(gxssURLs)
-			resultChan <- kxssURLs
 		}(i, batch)
 	}
-
-	// Wait for all goroutines to finish
+	
+	// Close results channel when all batches are processed
 	go func() {
 		wg.Wait()
-		close(resultChan)
+		close(batchResults)
 	}()
-
-	// Collect results
-	var finalURLs []string
-	for result := range resultChan {
+	
+	// Collect batch results
+	for result := range batchResults {
 		finalURLs = append(finalURLs, result...)
 	}
 
