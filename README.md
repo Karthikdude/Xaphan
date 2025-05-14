@@ -16,6 +16,12 @@ Xaphan is a command-line tool designed to automate the detection of Cross-Site S
 - **Concurrent Processing**: Utilizes multiple threads for concurrent processing of domains, significantly speeding up the scanning process.
 - **Rate Limiting**: Implements rate limiting to avoid overwhelming APIs and external services.
 - **Customizable Timeout**: Allows users to set custom timeouts for URL collection and status checks.
+- **Progress Tracking**: Displays real-time progress for long-running scans.
+- **User Agent Randomization**: Randomizes user agents to avoid detection.
+- **Proxy Support**: Allows the use of proxies for anonymity.
+- **URL Filtering**: Excludes URLs containing specific patterns.
+- **Retry Mechanism**: Automatically retries failed requests.
+- **HTML Reports**: Generates visually appealing HTML reports with statistics.
 
 ## Installation
 
@@ -76,20 +82,44 @@ xaphan -list domains.txt [-wayback] or [-gau]
 
 ### Options
 
--  `-url`: Scan a single domain.
+- `-url`: Scan a single domain.
 - `-list`: File containing a list of domains to scan.
 - `-wayback`: Use Wayback Machine to fetch URLs.
 - `-gau`: Use gau to fetch URLs.
 - `-verbose`: Enable verbose output.
 - `-response`: Display HTTP response status codes.
 - `-json`: Save results in JSON format.
+- `-detailed`: Save detailed report to a file.
+- `-html`: Save results in HTML format with visualizations.
+- `-proxy`: Use a proxy for HTTP requests (e.g., http://127.0.0.1:8080).
+- `-depth`: Set the maximum scan depth (default: 2).
+- `-exclude`: Exclude URLs containing specific patterns (comma-separated).
+- `-timeout`: Set timeout for requests in seconds (default: 30).
+- `-retry`: Set the number of retry attempts for failed requests (default: 3).
+- `-t`: Number of threads to use for concurrent processing (default: 50).
 - `-h`: Show this help message and exit.
-- `-t`: Number of threads to use for concurrent processing (default is 50).
 
 ### Example
 
 ```sh
 xaphan -uurl testphp.vulnweb.com --gau  --json output.json
+```
+
+### Additional Examples
+
+Scan a domain using wayback with HTML report:
+```sh
+xaphan -url testphp.vulnweb.com --wayback --html report.html
+```
+
+Scan with proxy and exclude certain paths:
+```sh
+xaphan -url testphp.vulnweb.com --gau --proxy http://127.0.0.1:8080 --exclude login,admin,static
+```
+
+Scan multiple domains with custom timeout and retry:
+```sh
+xaphan -list domains.txt --gau --timeout 60 --retry 5 --t 100
 ```
 
 ## Tools
@@ -116,6 +146,21 @@ Xaphan provides detailed results for each domain scanned. The results include:
 - **URL**: The URL where the XSS vulnerability was found.
 - **Status**: The HTTP response status code.
 - **Unfiltered Symbols**: The symbols that were found unfiltered in the URL.
+
+## HTML Reports
+
+The HTML report provides a visual representation of the scan results, including:
+
+- A summary of all findings categorized by severity
+- Detailed information about each vulnerability
+- Color-coded entries based on severity
+- Statistics about the scan
+
+To generate an HTML report, use the `-html` flag followed by the output file name:
+
+```sh
+xaphan -url testphp.vulnweb.com --gau --html report.html
+```
 
 ## Contributing
 
