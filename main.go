@@ -124,19 +124,19 @@ func displayBanner() {
 	version := "v1.1.0"
 	
 	fmt.Println()
-	fmt.Println(colorizeText("  ╔═══════════════════════════════════════════════════════════╗", "cyan"))
-	fmt.Println(colorizeText("  ║                                                           ║", "cyan"))
-	fmt.Println(colorizeText("  ║", "cyan") + "  " + colorizeText("██╗  ██╗ █████╗ ██████╗ ██╗  ██╗ █████╗ ███╗   ██╗", "red") + "  " + colorizeText("║", "cyan"))
-	fmt.Println(colorizeText("  ║", "cyan") + "  " + colorizeText("╚██╗██╔╝██╔══██╗██╔══██╗██║  ██║██╔══██╗████╗  ██║", "red") + "  " + colorizeText("║", "cyan"))
-	fmt.Println(colorizeText("  ║", "cyan") + "   " + colorizeText("╚███╔╝ ███████║██████╔╝███████║███████║██╔██╗ ██║", "red") + "  " + colorizeText("║", "cyan"))
-	fmt.Println(colorizeText("  ║", "cyan") + "   " + colorizeText("██╔██╗ ██╔══██║██╔═══╝ ██╔══██║██╔══██║██║╚██╗██║", "red") + "  " + colorizeText("║", "cyan"))
-	fmt.Println(colorizeText("  ║", "cyan") + "  " + colorizeText("██╔╝ ██╗██║  ██║██║     ██║  ██║██║  ██║██║ ╚████║", "red") + "  " + colorizeText("║", "cyan"))
-	fmt.Println(colorizeText("  ║", "cyan") + "  " + colorizeText("╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝", "red") + "  " + colorizeText("║", "cyan"))
-	fmt.Println(colorizeText("  ║                                                           ║", "cyan"))
-	fmt.Println(colorizeText("  ║", "cyan") + "  " + colorizeText("XSS Vulnerability Scanner", "white") + "    " + colorizeText(version, "green") + "                  " + colorizeText("║", "cyan"))
-	fmt.Println(colorizeText("  ║                                                           ║", "cyan"))
-	fmt.Println(colorizeText("  ║", "cyan") + "  " + colorizeText("Developed by Karthik S Sathyan", "green") + "                          " + colorizeText("║", "cyan"))
-	fmt.Println(colorizeText("  ╚═══════════════════════════════════════════════════════════╝", "cyan"))
+	fmt.Println(colorizeText("  ╔════════════════════════════════════════════════════════════════╗", "cyan"))
+	fmt.Println(colorizeText("  ║                                                                ║", "cyan"))
+	fmt.Println(colorizeText("  ║", "cyan") + "    " + colorizeText("██╗  ██╗ █████╗ ██████╗ ██╗  ██╗ █████╗ ███╗   ██╗", "red") + "    " + colorizeText("║", "cyan"))
+	fmt.Println(colorizeText("  ║", "cyan") + "    " + colorizeText("╚██╗██╔╝██╔══██╗██╔══██╗██║  ██║██╔══██╗████╗  ██║", "red") + "    " + colorizeText("║", "cyan"))
+	fmt.Println(colorizeText("  ║", "cyan") + "     " + colorizeText("╚███╔╝ ███████║██████╔╝███████║███████║██╔██╗ ██║", "red") + "    " + colorizeText("║", "cyan"))
+	fmt.Println(colorizeText("  ║", "cyan") + "     " + colorizeText("██╔██╗ ██╔══██║██╔═══╝ ██╔══██║██╔══██║██║╚██╗██║", "red") + "    " + colorizeText("║", "cyan"))
+	fmt.Println(colorizeText("  ║", "cyan") + "    " + colorizeText("██╔╝ ██╗██║  ██║██║     ██║  ██║██║  ██║██║ ╚████║", "red") + "    " + colorizeText("║", "cyan"))
+	fmt.Println(colorizeText("  ║", "cyan") + "    " + colorizeText("╚═╝  ╚═╝╚═╝  ╚═╝╚═╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═══╝", "red") + "    " + colorizeText("║", "cyan"))
+	fmt.Println(colorizeText("  ║                                                                ║", "cyan"))
+	fmt.Println(colorizeText("  ║", "cyan") + "            " + colorizeText("XSS Vulnerability Scanner", "white") + "    " + colorizeText(version, "green") + "                   " + colorizeText("║", "cyan"))
+	fmt.Println(colorizeText("  ║                                                                ║", "cyan"))
+	fmt.Println(colorizeText("  ║", "cyan") + "            " + colorizeText("Developed by Karthik S Sathyan", "green") + "                      " + colorizeText("║", "cyan"))
+	fmt.Println(colorizeText("  ╚════════════════════════════════════════════════════════════════╝", "cyan"))
 	fmt.Println()
 }
 
@@ -256,20 +256,26 @@ func fetchGauURLs(domain string) ([]string, error) {
 		return cachedURLs.([]string), nil
 	}
 
-	// Add scheme if missing from domain
-	urlDomain := domain
-	if !strings.HasPrefix(domain, "http://") && !strings.HasPrefix(domain, "https://") {
-		urlDomain = "http://" + domain
-	}
-
 	// Fetch URLs using gau command
+	fmt.Printf("  %s Executing: gau %s\n", colorizeText("⟳", "cyan"), domain)
 	cmd := exec.Command("gau", domain)
-	output, err := cmd.Output()
+	output, err := cmd.CombinedOutput()
 	
 	// If gau fails or returns no results, log a warning
 	urls := strings.Split(string(output), "\n")
-	if err != nil || len(urls) <= 1 {
-		fmt.Printf("  %s GAU failed or returned no results for %s\n", 
+	if err != nil {
+		fmt.Printf("  %s GAU error for %s: %v\n", 
+			colorizeText("!", "yellow"),
+			colorizeText(domain, "white"),
+			err)
+		fmt.Printf("  %s GAU output: %s\n", 
+			colorizeText("!", "yellow"),
+			string(output))
+		return []string{}, nil
+	}
+	
+	if len(urls) <= 1 {
+		fmt.Printf("  %s GAU returned no results for %s\n", 
 			colorizeText("!", "yellow"),
 			colorizeText(domain, "white"))
 		return []string{}, nil
@@ -297,6 +303,11 @@ func fetchGauURLs(domain string) ([]string, error) {
 			filteredURLs = append(filteredURLs, line)
 		}
 	}
+
+	fmt.Printf("  %s GAU found %d URLs for %s\n", 
+		colorizeText("✓", "green"),
+		len(filteredURLs),
+		colorizeText(domain, "white"))
 
 	// Store in cache
 	urlCache.Set("gau_"+domain, filteredURLs, cache.DefaultExpiration)
@@ -425,40 +436,55 @@ func extractXSSDetails(urls []string, verbose bool, checkStatus bool) []map[stri
 				percentage, i, len(urls))
 		}
 		
+		// Extract the unfiltered symbols from the URL if they exist
+		var unfilteredSymbols []string
+		
 		if strings.Contains(url, "Unfiltered: [") {
-			unfilteredSymbols := strings.Split(strings.Trim(strings.Split(url, "Unfiltered: [")[1], "]"), " ")
-			severity, severityColor := determineSeverity(unfilteredSymbols)
-			statusCode := 0
+			unfilteredSymbols = strings.Split(strings.Trim(strings.Split(url, "Unfiltered: [")[1], "]"), " ")
+		} else if strings.Contains(url, "kxss") {
+			// Handle kxss format - typically shows "kxss: found ... in parameter X"
+			unfilteredSymbols = []string{"<", ">", "\"", "'", "script"}
+		} else {
+			// Default case - try to extract special characters from the URL
+			possibleSymbols := []string{"<", ">", "\"", "'", "script", "onerror", "onload"}
+			for _, symbol := range possibleSymbols {
+				if strings.Contains(strings.ToLower(url), strings.ToLower(symbol)) {
+					unfilteredSymbols = append(unfilteredSymbols, symbol)
+				}
+			}
+		}
+		
+		severity, severityColor := determineSeverity(unfilteredSymbols)
+		statusCode := 0
+		if checkStatus {
+			var err error
+			statusCode, err = checkURLStatus(url)
+			if err != nil && verbose {
+				fmt.Printf("\n  %s Failed to check status for %s: %v\n", 
+					colorizeText("✗", "red"), 
+					colorizeText(url, "white"), 
+					err)
+			}
+		}
+		status := fmt.Sprintf("[Status: %d]", statusCode)
+		timestamp := time.Now().Format("[04:01:02:2006]")
+		xssDetails = append(xssDetails, map[string]interface{}{
+			"url":           url,
+			"severity":      severity,
+			"status":        status,
+			"timestamp":     timestamp,
+			"severity_color": severityColor,
+		})
+		if verbose {
+			// Print with enhanced UI if verbose is enabled
+			fmt.Printf("\n  %s %s\n", colorizeText("Found:", "cyan"), url)
+			fmt.Printf("  %s %v\n", colorizeText("Unfiltered:", "cyan"), unfilteredSymbols)
+			fmt.Printf("  %s %s\n", colorizeText("Severity:", "cyan"), severity)
 			if checkStatus {
-				var err error
-				statusCode, err = checkURLStatus(url)
-				if err != nil && verbose {
-					fmt.Printf("\n  %s Failed to check status for %s: %v\n", 
-						colorizeText("✗", "red"), 
-						colorizeText(url, "white"), 
-						err)
-				}
+				fmt.Printf("  %s %s\n", colorizeText("Status:", "cyan"), status)
 			}
-			status := fmt.Sprintf("[Status: %d]", statusCode)
-			timestamp := time.Now().Format("[04:01:02:2006]")
-			xssDetails = append(xssDetails, map[string]interface{}{
-				"url":           url,
-				"severity":      severity,
-				"status":        status,
-				"timestamp":     timestamp,
-				"severity_color": severityColor,
-			})
-			if verbose {
-				// Print with enhanced UI if verbose is enabled
-				fmt.Printf("\n  %s %s\n", colorizeText("Found:", "cyan"), url)
-				fmt.Printf("  %s %v\n", colorizeText("Unfiltered:", "cyan"), unfilteredSymbols)
-				fmt.Printf("  %s %s\n", colorizeText("Severity:", "cyan"), severity)
-				if checkStatus {
-					fmt.Printf("  %s %s\n", colorizeText("Status:", "cyan"), status)
-				}
-				fmt.Printf("  %s %s\n", colorizeText("Timestamp:", "cyan"), timestamp)
-				fmt.Println(strings.Repeat("─", 80))
-			}
+			fmt.Printf("  %s %s\n", colorizeText("Timestamp:", "cyan"), timestamp)
+			fmt.Println(strings.Repeat("─", 80))
 		}
 	}
 	
@@ -533,9 +559,24 @@ func displayResults(xssDetails []map[string]interface{}, verbose bool, checkStat
 		// Print the URL with proper indentation
 		fmt.Printf("  %s %s\n", colorizeText("URL:", "cyan"), url)
 		
-		// Print unfiltered symbols with proper formatting
+		// Extract potential XSS payloads from the URL
+		var unfilteredSymbols []string
 		if strings.Contains(url, "Unfiltered: [") {
-			unfilteredSymbols := strings.Split(strings.Trim(strings.Split(url, "Unfiltered: [")[1], "]"), " ")
+			unfilteredSymbols = strings.Split(strings.Trim(strings.Split(url, "Unfiltered: [")[1], "]"), " ")
+		} else if strings.Contains(url, "kxss") {
+			// Handle kxss format - typically shows "kxss: found ... in parameter X"
+			unfilteredSymbols = []string{"<", ">", "\"", "'", "script"}
+		} else {
+			// Default case - try to extract special characters from the URL
+			possibleSymbols := []string{"<", ">", "\"", "'", "script", "onerror", "onload"}
+			for _, symbol := range possibleSymbols {
+				if strings.Contains(strings.ToLower(url), strings.ToLower(symbol)) {
+					unfilteredSymbols = append(unfilteredSymbols, symbol)
+				}
+			}
+		}
+		
+		if len(unfilteredSymbols) > 0 {
 			fmt.Printf("  %s %s\n", colorizeText("Unfiltered:", "cyan"), strings.Join(unfilteredSymbols, ", "))
 		}
 		
@@ -769,41 +810,117 @@ func runPipeline(domain string, useWayback bool, useGau bool) []string {
 			timeoutFlag)
 	}
 
-	// Show pipeline steps with real-time progress
+	// Create temporary file for gf xss
+	tmpFile, err := ioutil.TempFile("", "xaphan-urls-*.txt")
+	if err != nil {
+		fmt.Printf("  %s Failed to create temp file: %v\n", colorizeText("✗", "red"), err)
+		return []string{}
+	}
+	defer os.Remove(tmpFile.Name())
+	
+	// Write URLs to temporary file
+	for _, url := range urls {
+		if url != "" {
+			tmpFile.WriteString(url + "\n")
+		}
+	}
+	tmpFile.Close()
 	
 	// Run gf xss
 	fmt.Printf("  %s Running GF XSS pattern matcher...\n", colorizeText("⟳", "cyan"))
-	cmd := exec.Command("gf", "xss")
-	cmd.Stdin = strings.NewReader(strings.Join(urls, "\n"))
-	output, err := cmd.Output()
+	cmd := exec.Command("gf", "xss", tmpFile.Name())
+	output, err := cmd.CombinedOutput()
+	
 	if err != nil {
 		fmt.Printf("  %s Failed to run gf xss: %v\n", colorizeText("✗", "red"), err)
-		return []string{}
+		fmt.Printf("  %s Output: %s\n", colorizeText("!", "yellow"), string(output))
+		
+		// Try alternative method with cat and pipeline
+		fmt.Printf("  %s Trying alternative gf method...\n", colorizeText("⟳", "cyan"))
+		pipecmd := exec.Command("bash", "-c", "cat "+tmpFile.Name()+" | gf xss")
+		output, err = pipecmd.CombinedOutput()
+		if err != nil {
+			fmt.Printf("  %s Alternative gf method failed: %v\n", colorizeText("✗", "red"), err)
+			return []string{}
+		}
 	}
+	
 	gfXssURLs := strings.Split(string(output), "\n")
+	var filteredGfURLs []string
+	for _, url := range gfXssURLs {
+		if url != "" {
+			filteredGfURLs = append(filteredGfURLs, url)
+		}
+	}
+	
 	fmt.Printf("  %s GF found %s potential XSS endpoints\n", 
 		colorizeText("✓", "green"),
-		colorizeText(fmt.Sprintf("%d", len(gfXssURLs)), "white"))
+		colorizeText(fmt.Sprintf("%d", len(filteredGfURLs)), "white"))
+		
+	if len(filteredGfURLs) == 0 {
+		fmt.Printf("  %s No potential XSS endpoints found, skipping further processing\n", 
+			colorizeText("!", "yellow"))
+		return []string{}
+	}
+
+	// Create temporary file for uro
+	uroTmpFile, err := ioutil.TempFile("", "xaphan-uro-*.txt")
+	if err != nil {
+		fmt.Printf("  %s Failed to create uro temp file: %v\n", colorizeText("✗", "red"), err)
+		return filteredGfURLs
+	}
+	defer os.Remove(uroTmpFile.Name())
+	
+	// Write gf results to uro input file
+	for _, url := range filteredGfURLs {
+		if url != "" {
+			uroTmpFile.WriteString(url + "\n")
+		}
+	}
+	uroTmpFile.Close()
 
 	// Run uro
 	fmt.Printf("  %s Running URO for URL optimization...\n", colorizeText("⟳", "cyan"))
-	cmd = exec.Command("uro")
-	cmd.Stdin = strings.NewReader(strings.Join(gfXssURLs, "\n"))
-	output, err = cmd.Output()
+	cmd = exec.Command("uro", "-file", uroTmpFile.Name())
+	output, err = cmd.CombinedOutput()
+	
 	if err != nil {
 		fmt.Printf("  %s Failed to run uro: %v\n", colorizeText("✗", "red"), err)
-		return []string{}
+		fmt.Printf("  %s Output: %s\n", colorizeText("!", "yellow"), string(output))
+		
+		// Try alternative method with cat and pipeline
+		fmt.Printf("  %s Trying alternative uro method...\n", colorizeText("⟳", "cyan"))
+		pipecmd := exec.Command("bash", "-c", "cat "+uroTmpFile.Name()+" | uro")
+		output, err = pipecmd.CombinedOutput()
+		if err != nil {
+			fmt.Printf("  %s Alternative uro method failed: %v\n", colorizeText("✗", "red"), err)
+			return filteredGfURLs
+		}
 	}
+	
 	uroURLs := strings.Split(string(output), "\n")
+	var filteredUroURLs []string
+	for _, url := range uroURLs {
+		if url != "" {
+			filteredUroURLs = append(filteredUroURLs, url)
+		}
+	}
+	
 	fmt.Printf("  %s URO optimized to %s unique endpoints\n", 
 		colorizeText("✓", "green"),
-		colorizeText(fmt.Sprintf("%d", len(uroURLs)), "white"))
+		colorizeText(fmt.Sprintf("%d", len(filteredUroURLs)), "white"))
+		
+	if len(filteredUroURLs) == 0 {
+		fmt.Printf("  %s URO returned no results, using original GF results\n", 
+			colorizeText("!", "yellow"))
+		filteredUroURLs = filteredGfURLs
+	}
 
 	// Determine batch size based on the number of URLs after uro
-	batchSize := determineBatchSize(len(uroURLs))
+	batchSize := determineBatchSize(len(filteredUroURLs))
 	
 	// Split URLs into batches
-	batches := splitIntoBatches(uroURLs, batchSize)
+	batches := splitIntoBatches(filteredUroURLs, batchSize)
 	fmt.Printf("  %s Testing endpoints in %s batches...\n", 
 		colorizeText("⟳", "cyan"),
 		colorizeText(fmt.Sprintf("%d", len(batches)), "white"))
@@ -817,7 +934,7 @@ func runPipeline(domain string, useWayback bool, useGau bool) []string {
 		wg.Add(1)
 		go func(batchNumber int, batch []string) {
 			defer wg.Done()
-			fmt.Printf("  %s Testing batch %d/%d (%d URLs)...\r", 
+			fmt.Printf("  %s Testing batch %d/%d (%d URLs)...\n", 
 				colorizeText("⟳", "cyan"),
 				batchNumber+1, 
 				len(batches),
@@ -840,7 +957,7 @@ func runPipeline(domain string, useWayback bool, useGau bool) []string {
 		finalURLs = append(finalURLs, result...)
 	}
 
-	fmt.Printf("\n  %s Found %s potential XSS vulnerabilities in %s\n\n", 
+	fmt.Printf("  %s Found %s potential XSS vulnerabilities in %s\n\n", 
 		colorizeText("✓", "green"),
 		colorizeText(fmt.Sprintf("%d", len(finalURLs)), 
 			func() string {
@@ -879,16 +996,51 @@ func processBatchWithGxss(batch []string) []string {
 		return []string{}
 	}
 	
-	// Run Gxss tool
-	cmd := exec.Command("Gxss")
-	cmd.Stdin = strings.NewReader(strings.Join(batch, "\n"))
-	output, err := cmd.Output()
+	// Create temporary file with batch URLs
+	tmpFile, err := ioutil.TempFile("", "gxss-urls-*.txt")
+	if err != nil {
+		fmt.Printf("  %s Failed to create temp file for Gxss: %v\n", 
+			colorizeText("✗", "red"), err)
+		return []string{}
+	}
+	defer os.Remove(tmpFile.Name())
+	
+	for _, url := range batch {
+		if url != "" {
+			tmpFile.WriteString(url + "\n")
+		}
+	}
+	tmpFile.Close()
+	
+	// Run Gxss tool with file input
+	fmt.Printf("  %s Running Gxss on %d URLs...\n", 
+		colorizeText("⟳", "cyan"), 
+		len(batch))
+	
+	cmd := exec.Command("Gxss", "-file", tmpFile.Name())
+	output, err := cmd.CombinedOutput()
 	
 	if err != nil {
-		fmt.Printf("  %s Failed to run Gxss: %v\n", 
+		fmt.Printf("  %s Gxss error: %v\n", 
 			colorizeText("✗", "red"), 
 			err)
-		return []string{}
+		fmt.Printf("  %s Gxss output: %s\n", 
+			colorizeText("!", "yellow"),
+			string(output))
+		
+		// If Gxss fails, try with cat and pipeline
+		fmt.Printf("  %s Trying alternative Gxss method...\n", 
+			colorizeText("⟳", "cyan"))
+		
+		pipecmd := exec.Command("bash", "-c", "cat "+tmpFile.Name()+" | Gxss")
+		output, err = pipecmd.CombinedOutput()
+		
+		if err != nil {
+			fmt.Printf("  %s Alternative Gxss method failed: %v\n", 
+				colorizeText("✗", "red"), 
+				err)
+			return batch // Return input batch if all methods fail
+		}
 	}
 	
 	// Process Gxss output
@@ -902,6 +1054,10 @@ func processBatchWithGxss(batch []string) []string {
 		}
 	}
 	
+	fmt.Printf("  %s Gxss found %d potential vulnerable URLs\n", 
+		colorizeText("✓", "green"), 
+		len(filtered))
+	
 	return filtered
 }
 
@@ -910,16 +1066,51 @@ func processBatchWithKxss(batch []string) []string {
 		return []string{}
 	}
 	
-	// Run kxss tool
-	cmd := exec.Command("kxss")
-	cmd.Stdin = strings.NewReader(strings.Join(batch, "\n"))
-	output, err := cmd.Output()
+	// Create temporary file with batch URLs
+	tmpFile, err := ioutil.TempFile("", "kxss-urls-*.txt")
+	if err != nil {
+		fmt.Printf("  %s Failed to create temp file for kxss: %v\n", 
+			colorizeText("✗", "red"), err)
+		return batch
+	}
+	defer os.Remove(tmpFile.Name())
+	
+	for _, url := range batch {
+		if url != "" {
+			tmpFile.WriteString(url + "\n")
+		}
+	}
+	tmpFile.Close()
+	
+	// Run kxss tool with file input
+	fmt.Printf("  %s Running kxss on %d URLs...\n", 
+		colorizeText("⟳", "cyan"), 
+		len(batch))
+	
+	cmd := exec.Command("kxss", "-file", tmpFile.Name())
+	output, err := cmd.CombinedOutput()
 	
 	if err != nil {
-		fmt.Printf("  %s Failed to run kxss: %v\n", 
+		fmt.Printf("  %s kxss error: %v\n", 
 			colorizeText("✗", "red"), 
 			err)
-		return batch // Return input if kxss fails
+		fmt.Printf("  %s kxss output: %s\n", 
+			colorizeText("!", "yellow"),
+			string(output))
+		
+		// If kxss fails, try with cat and pipeline
+		fmt.Printf("  %s Trying alternative kxss method...\n", 
+			colorizeText("⟳", "cyan"))
+		
+		pipecmd := exec.Command("bash", "-c", "cat "+tmpFile.Name()+" | kxss")
+		output, err = pipecmd.CombinedOutput()
+		
+		if err != nil {
+			fmt.Printf("  %s Alternative kxss method failed: %v\n", 
+				colorizeText("✗", "red"), 
+				err)
+			return batch // Return input batch if all methods fail
+		}
 	}
 	
 	// Process kxss output
@@ -932,6 +1123,10 @@ func processBatchWithKxss(batch []string) []string {
 			filtered = append(filtered, line)
 		}
 	}
+	
+	fmt.Printf("  %s kxss found %d potential vulnerable URLs\n", 
+		colorizeText("✓", "green"), 
+		len(filtered))
 	
 	return filtered
 }
@@ -969,6 +1164,11 @@ func main() {
 
 	if helpFlag || (urlFlag == "" && listFlag == "") {
 		flag.Usage()
+		fmt.Println("\nExample usage:")
+		fmt.Println("  ./Xaphan -url example.com -gau")
+		fmt.Println("  ./Xaphan -url example.com -wayback -verbose")
+		fmt.Println("  ./Xaphan -list domains.txt -gau -t 10")
+		fmt.Println("  ./Xaphan -list domains.txt -wayback -gau -response -html report.html")
 		return
 	}
 
@@ -999,15 +1199,47 @@ func main() {
 	}
 
 	if len(domains) == 0 {
-		log.Fatalf("%s No domains to scan. Use -u or -l.", colorizeText("[ERROR]", "red"))
+		log.Fatalf("%s No domains to scan. Use -url or -list.", colorizeText("[ERROR]", "red"))
 		return
 	}
 
 	if !waybackFlag && !gauFlag {
-		log.Fatalf("%s No tool specified to collect URLs. Use --wayback or --gau.", colorizeText("[ERROR]", "red"))
-		flag.Usage()
-		return
+		// Enable gau by default if no tool is specified
+		fmt.Printf("%s No URL collection method specified. Using GAU by default.\n", 
+			colorizeText("[INFO]", "yellow"))
+		gauFlag = true
 	}
+
+	// Check if required tools are installed
+	requiredTools := []string{"gf", "uro", "Gxss", "kxss"}
+	if gauFlag {
+		requiredTools = append(requiredTools, "gau")
+	}
+	
+	// Check for each tool
+	fmt.Printf("  %s Checking for required tools...\n", colorizeText("⟳", "cyan"))
+	missingTools := []string{}
+	for _, tool := range requiredTools {
+		var cmd *exec.Cmd
+		if runtime.GOOS == "windows" {
+			cmd = exec.Command("where", tool)
+		} else {
+			cmd = exec.Command("which", tool)
+		}
+		if err := cmd.Run(); err != nil {
+			missingTools = append(missingTools, tool)
+		}
+	}
+	
+	if len(missingTools) > 0 {
+		fmt.Printf("  %s Missing required tools: %s\n", 
+			colorizeText("✗", "red"),
+			strings.Join(missingTools, ", "))
+		fmt.Println("\nPlease install the missing tools before running Xaphan.")
+		fmt.Println("For installation instructions, visit: https://github.com/KarthikS-Sathyan/Xaphan")
+		os.Exit(1)
+	}
+	fmt.Printf("  %s All required tools found\n", colorizeText("✓", "green"))
 
 	// Create results directory if it doesn't exist
 	if jsonFlag != "" || detailedFlag != "" || htmlReportFlag != "" {
