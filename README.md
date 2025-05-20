@@ -54,9 +54,9 @@ To install Xaphan, follow these steps:
      go install github.com/lc/gau/v2/cmd/gau@latest
      go install github.com/tomnomnom/waybackurls@latest
      go install github.com/tomnomnom/gf@latest
-     go install github.com/tomnomnom/uro@latest
+     go install github.com/s0md3v/uro@latest
      go install github.com/KathanP19/Gxss@latest
-     go install github.com/KathanP19/kxss@latest
+     go install github.com/Emoe/kxss@latest
      ```
 
 4. **Build the Tool**:
