@@ -6,6 +6,14 @@
 
 Xaphan is a command-line tool designed to automate the detection of Cross-Site Scripting (XSS) vulnerabilities by identifying unfiltered parameters in web applications. It leverages various tools and APIs to fetch URLs, analyze them for potential XSS risks, and provide detailed reports. Xaphan is built to be efficient, easy to use, and highly customizable, making it a valuable asset for security professionals and developers alike.
 
+## Version 3.0 Highlights
+
+- **Comprehensive Scanning**: New `-all` command to use all URL extractor tools for thorough scanning
+- **Scan Type Display**: Visual indicators showing whether a scan is passive or active
+- **Additional Tool Integration**: Support for Katana, URLFinder, Arjun, Gospider, and Hakrawler
+- **Parallel Processing**: Run multiple tools simultaneously with the `-all` flag
+- **Improved URL Deduplication**: Efficiently combine and deduplicate URLs from multiple sources
+
 ## Version 2.0 Highlights
 
 - **New Modern UI**: Improved banner display and progress indicators
@@ -17,7 +25,9 @@ Xaphan is a command-line tool designed to automate the detection of Cross-Site S
 ## Features
 
 - **Automated XSS Detection**: Automatically detects XSS vulnerabilities in web applications.
-- **Multiple URL Fetching Options**: Supports fetching URLs using Wayback Machine, gau, and other custom methods.
+- **Multiple URL Fetching Options**: Supports fetching URLs using Wayback Machine, gau, Katana, URLFinder, Arjun, Gospider, Hakrawler, and more.
+- **Comprehensive Scanning**: Use the `-all` flag to run all URL collection tools simultaneously for maximum coverage.
+- **Scan Type Indicators**: Visual indicators showing whether a scan is passive (green) or active (red).
 - **URL Saving Functionality**: Save collected URLs at different stages (raw, after GF, after URO).
 - **Detailed Reporting**: Provides detailed and JSON formatted reports of the findings.
 - **Verbose Output**: Offers verbose output for detailed inspection.
@@ -49,14 +59,22 @@ To install Xaphan, follow these steps:
    ```
 
 3. **Install Additional Tools**:
-   - Ensure you have `gau`, `waybackurls`, `gf`, `uro`, `Gxss`, and `kxss` installed. You can install them using the following commands:
+   - Ensure you have the following tools installed. You can install them using the following commands:
      ```sh
+     # Core tools
      go install github.com/lc/gau/v2/cmd/gau@latest
      go install github.com/tomnomnom/waybackurls@latest
      go install github.com/tomnomnom/gf@latest
      go install github.com/s0md3v/uro@latest
      go install github.com/KathanP19/Gxss@latest
      go install github.com/Emoe/kxss@latest
+     
+     # New tools
+     go install -v github.com/projectdiscovery/katana/cmd/katana@latest
+     go install -v github.com/projectdiscovery/urlfinder/cmd/urlfinder@latest
+     go install github.com/hakluke/hakrawler@latest
+     go install github.com/jaeles-project/gospider@latest
+     pip install arjun  # or use pipx: pipx install arjun
      ```
 
 4. **Build the Tool**:
@@ -102,8 +120,14 @@ xaphan -list domains.txt -gau
 
 - `-url`: Scan a single domain.
 - `-list`: File containing a list of domains to scan.
-- `-wayback`: Use Wayback Machine to fetch URLs.
-- `-gau`: Use gau to fetch URLs.
+- `-wayback`: Use Wayback Machine to fetch URLs (passive).
+- `-gau`: Use gau to fetch URLs (passive).
+- `-urlfinder`: Use URLFinder to extract URLs from JavaScript files (passive).
+- `-katana`: Use Katana crawler to fetch URLs (active).
+- `-gospider`: Use Gospider for web crawling (active).
+- `-hakrawler`: Use Hakrawler for web crawling (active).
+- `-arjun`: Use Arjun to find query parameters (active).
+- `-all`: Use all URL extractor tools for comprehensive scanning (only for single domain).
 - `-verbose`: Enable verbose output.
 - `-response`: Display HTTP response status codes.
 - `-json`: Save results in JSON format.
@@ -148,6 +172,21 @@ Scan multiple domains with custom timeout and retry:
 xaphan -list domains.txt -gau -timeout 60 -retry 5 -t 100
 ```
 
+Comprehensive scan using all tools for a single domain:
+```sh
+xaphan -url example.com -all -verbose
+```
+
+Active scanning with Katana crawler:
+```sh
+xaphan -url example.com -katana -depth 3
+```
+
+Combining passive tools for non-intrusive scanning:
+```sh
+xaphan -url example.com -wayback -gau -urlfinder
+```
+
 ## URL Saving Functionality
 
 Version 2.0 introduces the ability to save URLs at different stages of the processing pipeline:
@@ -171,14 +210,19 @@ This functionality is particularly useful for:
 
 Xaphan utilizes the following tools for URL fetching and XSS detection:
 
-| Tool         | Description                                                                 |
-|--------------|-----------------------------------------------------------------------------|
-| **gau**      | A fast URL collector.                                                         |
-| **waybackurls** | Fetches URLs from the Wayback Machine.                                       |
-| **gf**       | A grep for URLs.                                                              |
-| **uro**      | A tool to unfurl and rebuild URLs.                                           |
-| **Gxss**     | A tool to detect XSS vulnerabilities.                                          |
-| **kxss**     | A tool to detect XSS vulnerabilities.                                          |
+| Tool         | Description                                                                 | Type    |
+|--------------|-----------------------------------------------------------------------------|--------|
+| **gau**      | A fast URL collector.                                                         | Passive |
+| **waybackurls** | Fetches URLs from the Wayback Machine.                                       | Passive |
+| **urlfinder**| Extracts URLs from JavaScript files.                                          | Passive |
+| **katana**   | A fast crawler designed to crawl web applications.                            | Active  |
+| **gospider** | A web spider that crawls websites and extracts URLs.                          | Active  |
+| **hakrawler**| A fast web crawler designed for easy, quick discovery of endpoints.          | Active  |
+| **arjun**    | HTTP parameter discovery suite to find query parameters.                      | Active  |
+| **gf**       | A grep for URLs.                                                              | Utility |
+| **uro**      | A tool to unfurl and rebuild URLs.                                           | Utility |
+| **Gxss**     | A tool to detect XSS vulnerabilities.                                          | Testing |
+| **kxss**     | A tool to detect XSS vulnerabilities.                                          | Testing |
 
 ## Results
 
@@ -208,6 +252,14 @@ xaphan -url testphp.vulnweb.com -gau -html report.html
 ```
 
 ## Changelog
+
+### Version 3.0.0
+- Added support for additional tools: Katana, URLFinder, Arjun, Gospider, and Hakrawler
+- Implemented the `-all` flag for comprehensive scanning using all tools
+- Added scan type indicators (Passive/Active) for better visibility
+- Improved parallel processing for multiple tools
+- Enhanced URL deduplication for combined results
+- Added detailed progress reporting for comprehensive scans
 
 ### Version 2.0.0
 - New modern UI with improved banner display

@@ -46,6 +46,13 @@ var (
 	saveFlag            string
 	saveGfFlag          string
 	saveUroFlag         string
+	// New tool flags
+	katanaFlag          bool
+	urlfindFlag         bool
+	arjunFlag           bool
+	gospiderFlag        bool
+	hakrawlerFlag       bool
+	allFlag             bool
 
 	// Internal variables
 	processedDomains    int64 // Counter for processed domains
@@ -89,6 +96,13 @@ func init() {
 	flag.StringVar(&saveFlag, "save", "", "Save raw URLs collected from Wayback/GAU to a file.")
 	flag.StringVar(&saveGfFlag, "save-gf", "", "Save URLs after GF XSS filtering to a file.")
 	flag.StringVar(&saveUroFlag, "save-uro", "", "Save URLs after URO optimization to a file.")
+	// New tool flags
+	flag.BoolVar(&katanaFlag, "katana", false, "Use Katana crawler to fetch URLs.")
+	flag.BoolVar(&urlfindFlag, "urlfinder", false, "Use urlfinder to extract URLs from JavaScript files.")
+	flag.BoolVar(&arjunFlag, "arjun", false, "Use Arjun to find query parameters.")
+	flag.BoolVar(&gospiderFlag, "gospider", false, "Use Gospider for web crawling.")
+	flag.BoolVar(&hakrawlerFlag, "hakrawler", false, "Use Hakrawler for web crawling.")
+	flag.BoolVar(&allFlag, "all", false, "Use all URL extractor tools (only for single domain scan).")
 
 	// Initialize the logger
 	log = logrus.New()
@@ -794,15 +808,302 @@ func saveURLsToFile(urls []string, filename string, suffix string) error {
 	return nil
 }
 
+// fetchKatanaURLs uses Katana crawler to fetch URLs from a domain
+func fetchKatanaURLs(domain string) ([]string, error) {
+	// Create a temporary file to store the output
+	tmpFile, err := ioutil.TempFile("", "katana-output-*.txt")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+	tmpFile.Close()
+	
+	// Construct the katana command
+	var cmd *exec.Cmd
+	if proxyFlag != "" {
+		cmd = exec.Command("katana", "-u", domain, "-proxy", proxyFlag, "-o", tmpFile.Name(), "-silent")
+	} else {
+		cmd = exec.Command("katana", "-u", domain, "-o", tmpFile.Name(), "-silent")
+	}
+	
+	log.Debugf("Running command: %s", cmd.String())
+	
+	// Run the command
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Debugf("katana command output: %s", string(output))
+		return nil, fmt.Errorf("failed to run katana: %v", err)
+	}
+	
+	// Read the output file
+	data, err := ioutil.ReadFile(tmpFile.Name())
+	if err != nil {
+		return nil, fmt.Errorf("failed to read katana output: %v", err)
+	}
+	
+	// Split the output into lines
+	urls := strings.Split(string(data), "\n")
+	
+	// Filter out empty lines and apply exclusion patterns
+	var filteredURLs []string
+	for _, url := range urls {
+		url = strings.TrimSpace(url)
+		if url != "" && !shouldExcludeURL(url) {
+			filteredURLs = append(filteredURLs, url)
+		}
+	}
+	
+	return filteredURLs, nil
+}
+
+// fetchUrlfinderURLs uses urlfinder to extract URLs from JavaScript files
+func fetchUrlfinderURLs(domain string) ([]string, error) {
+	// Create a temporary file to store the output
+	tmpFile, err := ioutil.TempFile("", "urlfinder-output-*.txt")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+	tmpFile.Close()
+	
+	// Construct the urlfinder command
+	var cmd *exec.Cmd
+	if proxyFlag != "" {
+		cmd = exec.Command("urlfinder", "-d", domain, "-proxy", proxyFlag, "-o", tmpFile.Name())
+	} else {
+		cmd = exec.Command("urlfinder", "-d", domain, "-o", tmpFile.Name())
+	}
+	
+	log.Debugf("Running command: %s", cmd.String())
+	
+	// Run the command
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Debugf("urlfinder command output: %s", string(output))
+		return nil, fmt.Errorf("failed to run urlfinder: %v", err)
+	}
+	
+	// Read the output file
+	data, err := ioutil.ReadFile(tmpFile.Name())
+	if err != nil {
+		return nil, fmt.Errorf("failed to read urlfinder output: %v", err)
+	}
+	
+	// Split the output into lines
+	urls := strings.Split(string(data), "\n")
+	
+	// Filter out empty lines and apply exclusion patterns
+	var filteredURLs []string
+	for _, url := range urls {
+		url = strings.TrimSpace(url)
+		if url != "" && !shouldExcludeURL(url) {
+			filteredURLs = append(filteredURLs, url)
+		}
+	}
+	
+	return filteredURLs, nil
+}
+
+// fetchArjunParams uses Arjun to find query parameters
+func fetchArjunParams(domain string) ([]string, error) {
+	// Create a temporary file to store the output
+	tmpFile, err := ioutil.TempFile("", "arjun-output-*.txt")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+	tmpFile.Close()
+	
+	// Construct the arjun command
+	var cmd *exec.Cmd
+	if proxyFlag != "" {
+		cmd = exec.Command("arjun", "-u", "https://"+domain, "--get", "--proxy", proxyFlag, "-o", tmpFile.Name())
+	} else {
+		cmd = exec.Command("arjun", "-u", "https://"+domain, "--get", "-o", tmpFile.Name())
+	}
+	
+	log.Debugf("Running command: %s", cmd.String())
+	
+	// Run the command
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Debugf("arjun command output: %s", string(output))
+		return nil, fmt.Errorf("failed to run arjun: %v", err)
+	}
+	
+	// Read the output file
+	data, err := ioutil.ReadFile(tmpFile.Name())
+	if err != nil {
+		return nil, fmt.Errorf("failed to read arjun output: %v", err)
+	}
+	
+	// Process the JSON output to extract parameters
+	var result map[string]interface{}
+	err = json.Unmarshal(data, &result)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse arjun output: %v", err)
+	}
+	
+	// Extract parameters and construct URLs
+	var urls []string
+	if params, ok := result["params"].([]interface{}); ok {
+		for _, param := range params {
+			if paramStr, ok := param.(string); ok {
+				url := fmt.Sprintf("https://%s/?%s=xss", domain, paramStr)
+				urls = append(urls, url)
+			}
+		}
+	}
+	
+	return urls, nil
+}
+
+// fetchGospiderURLs uses Gospider for web crawling
+func fetchGospiderURLs(domain string) ([]string, error) {
+	// Create a temporary file to store the output
+	tmpFile, err := ioutil.TempFile("", "gospider-output-*.txt")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+	tmpFile.Close()
+	
+	// Construct the gospider command
+	var cmd *exec.Cmd
+	if proxyFlag != "" {
+		cmd = exec.Command("gospider", "-s", "https://"+domain, "-d", fmt.Sprintf("%d", scanDepthFlag), "-c", "10", "--proxy", proxyFlag, "-o", tmpFile.Name())
+	} else {
+		cmd = exec.Command("gospider", "-s", "https://"+domain, "-d", fmt.Sprintf("%d", scanDepthFlag), "-c", "10", "-o", tmpFile.Name())
+	}
+	
+	log.Debugf("Running command: %s", cmd.String())
+	
+	// Run the command
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Debugf("gospider command output: %s", string(output))
+		return nil, fmt.Errorf("failed to run gospider: %v", err)
+	}
+	
+	// Read the output file
+	data, err := ioutil.ReadFile(tmpFile.Name())
+	if err != nil {
+		return nil, fmt.Errorf("failed to read gospider output: %v", err)
+	}
+	
+	// Split the output into lines
+	lines := strings.Split(string(data), "\n")
+	
+	// Extract URLs from the output
+	var urls []string
+	for _, line := range lines {
+		// Gospider output format: [url] - [found_url]
+		parts := strings.Split(line, " - ")
+		if len(parts) >= 2 {
+			url := strings.TrimSpace(parts[1])
+			if url != "" && !shouldExcludeURL(url) {
+				urls = append(urls, url)
+			}
+		}
+	}
+	
+	return urls, nil
+}
+
+// fetchHakrawlerURLs uses Hakrawler for web crawling
+func fetchHakrawlerURLs(domain string) ([]string, error) {
+	// Create a temporary file to store the output
+	tmpFile, err := ioutil.TempFile("", "hakrawler-output-*.txt")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temp file: %v", err)
+	}
+	defer os.Remove(tmpFile.Name())
+	tmpFile.Close()
+	
+	// Construct the hakrawler command
+	var cmd *exec.Cmd
+	if proxyFlag != "" {
+		cmd = exec.Command("hakrawler", "-domain", domain, "-depth", fmt.Sprintf("%d", scanDepthFlag), "-proxy", proxyFlag, "-outfile", tmpFile.Name())
+	} else {
+		cmd = exec.Command("hakrawler", "-domain", domain, "-depth", fmt.Sprintf("%d", scanDepthFlag), "-outfile", tmpFile.Name())
+	}
+	
+	log.Debugf("Running command: %s", cmd.String())
+	
+	// Run the command
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Debugf("hakrawler command output: %s", string(output))
+		return nil, fmt.Errorf("failed to run hakrawler: %v", err)
+	}
+	
+	// Read the output file
+	data, err := ioutil.ReadFile(tmpFile.Name())
+	if err != nil {
+		return nil, fmt.Errorf("failed to read hakrawler output: %v", err)
+	}
+	
+	// Split the output into lines
+	urls := strings.Split(string(data), "\n")
+	
+	// Filter out empty lines and apply exclusion patterns
+	var filteredURLs []string
+	for _, url := range urls {
+		url = strings.TrimSpace(url)
+		if url != "" && !shouldExcludeURL(url) {
+			filteredURLs = append(filteredURLs, url)
+		}
+	}
+	
+	return filteredURLs, nil
+}
+
 func runPipeline(domain string, useWayback bool, useGau bool) []string {
 	var urls []string
 	var err error
 
-	// Display fetching message
+	// Determine scan type (Passive vs Active)
+	scanType := ""
+	scanTypeColor := ""
+	
+	// Determine fetch method for display
 	fetchMethod := "GAU"
-	if useWayback {
-		fetchMethod = "Wayback Machine"
+	if allFlag {
+		fetchMethod = "All Tools"
+		scanType = "COMPREHENSIVE SCAN"
+		scanTypeColor = "magenta"
+	} else if useWayback || useGau || urlfindFlag {
+		// Passive tools
+		scanType = "PASSIVE SCAN"
+		scanTypeColor = "green"
+		if useWayback {
+			fetchMethod = "Wayback Machine"
+		} else if urlfindFlag {
+			fetchMethod = "URLFinder"
+		}
+	} else if katanaFlag || arjunFlag || gospiderFlag || hakrawlerFlag {
+		// Active tools
+		scanType = "ACTIVE SCAN"
+		scanTypeColor = "red"
+		if katanaFlag {
+			fetchMethod = "Katana"
+		} else if arjunFlag {
+			fetchMethod = "Arjun"
+		} else if gospiderFlag {
+			fetchMethod = "Gospider"
+		} else if hakrawlerFlag {
+			fetchMethod = "Hakrawler"
+		}
 	}
+	
+	// Display scan type
+	if scanType != "" {
+		fmt.Printf("  %s %s %s\n", 
+			colorizeText("[", scanTypeColor),
+			colorizeText(scanType, scanTypeColor),
+			colorizeText("]", scanTypeColor))
+	}
+	
 	fmt.Printf("  %s Fetching URLs for %s using %s...\n", 
 		colorizeText("⟳", "cyan"), 
 		colorizeText(domain, "white"),
@@ -813,6 +1114,99 @@ func runPipeline(domain string, useWayback bool, useGau bool) []string {
 	done := make(chan bool)
 
 	go func() {
+		// For the -all flag, collect URLs from all tools and combine them
+		if allFlag {
+			var allUrls []string
+			var wg sync.WaitGroup
+			urlChan := make(chan []string, 7) // Channel to collect URLs from all tools
+			errChan := make(chan error, 7)    // Channel to collect errors
+			
+			// Function to fetch URLs with a specific tool and send to channel
+			fetchURLs := func(fetcher func(string) ([]string, error), toolName string) {
+				defer wg.Done()
+				fmt.Printf("  %s Running %s for %s...\n", 
+					colorizeText("⟳", "cyan"),
+					colorizeText(toolName, "yellow"),
+					colorizeText(domain, "white"))
+				
+				toolUrls, err := fetcher(domain)
+				if err != nil {
+					fmt.Printf("  %s %s failed for %s: %v\n", 
+						colorizeText("✗", "red"),
+						toolName,
+						colorizeText(domain, "white"),
+						err)
+					errChan <- err
+					urlChan <- []string{} // Send empty slice on error
+					return
+				}
+				
+				fmt.Printf("  %s %s found %s URLs\n", 
+					colorizeText("✓", "green"),
+					toolName,
+					colorizeText(fmt.Sprintf("%d", len(toolUrls)), "white"))
+				
+				urlChan <- toolUrls
+			}
+			
+			// Start goroutines for each tool
+			wg.Add(7)
+			go fetchURLs(fetchWaybackURLs, "Wayback Machine")
+			go fetchURLs(fetchGauURLs, "GAU")
+			go fetchURLs(fetchKatanaURLs, "Katana")
+			go fetchURLs(fetchUrlfinderURLs, "URLFinder")
+			go fetchURLs(fetchArjunParams, "Arjun")
+			go fetchURLs(fetchGospiderURLs, "Gospider")
+			go fetchURLs(fetchHakrawlerURLs, "Hakrawler")
+			
+			// Wait for all goroutines to complete
+			go func() {
+				wg.Wait()
+				close(urlChan)
+				close(errChan)
+			}()
+			
+			// Collect all URLs
+			for toolUrls := range urlChan {
+				allUrls = append(allUrls, toolUrls...)
+			}
+			
+			// Check if we have any URLs
+			if len(allUrls) == 0 {
+				// Check if we have any errors
+				if len(errChan) > 0 {
+					fmt.Printf("  %s All tools failed to fetch URLs for %s\n", 
+						colorizeText("✗", "red"),
+						colorizeText(domain, "white"))
+				} else {
+					fmt.Printf("  %s No URLs found for %s with any tool\n", 
+						colorizeText("!", "yellow"),
+						colorizeText(domain, "white"))
+				}
+				done <- true
+				return
+			}
+			
+			// Remove duplicates
+			urlMap := make(map[string]bool)
+			for _, url := range allUrls {
+				urlMap[url] = true
+			}
+			
+			urls = make([]string, 0, len(urlMap))
+			for url := range urlMap {
+				urls = append(urls, url)
+			}
+			
+			fmt.Printf("  %s Combined and deduplicated to %s unique URLs\n", 
+				colorizeText("✓", "green"),
+				colorizeText(fmt.Sprintf("%d", len(urls)), "white"))
+			
+			done <- true
+			return
+		}
+		
+		// Original single-tool logic
 		if useWayback {
 			urls, err = fetchWaybackURLs(domain)
 			if err != nil {
@@ -825,6 +1219,56 @@ func runPipeline(domain string, useWayback bool, useGau bool) []string {
 			}
 		} else if useGau {
 			urls, err = fetchGauURLs(domain)
+			if err != nil {
+				fmt.Printf("  %s Failed to fetch URLs for %s: %v\n", 
+					colorizeText("✗", "red"), 
+					colorizeText(domain, "white"), 
+					err)
+				done <- true
+				return
+			}
+		} else if katanaFlag {
+			urls, err = fetchKatanaURLs(domain)
+			if err != nil {
+				fmt.Printf("  %s Failed to fetch URLs for %s: %v\n", 
+					colorizeText("✗", "red"), 
+					colorizeText(domain, "white"), 
+					err)
+				done <- true
+				return
+			}
+		} else if urlfindFlag {
+			urls, err = fetchUrlfinderURLs(domain)
+			if err != nil {
+				fmt.Printf("  %s Failed to fetch URLs for %s: %v\n", 
+					colorizeText("✗", "red"), 
+					colorizeText(domain, "white"), 
+					err)
+				done <- true
+				return
+			}
+		} else if arjunFlag {
+			urls, err = fetchArjunParams(domain)
+			if err != nil {
+				fmt.Printf("  %s Failed to fetch parameters for %s: %v\n", 
+					colorizeText("✗", "red"), 
+					colorizeText(domain, "white"), 
+					err)
+				done <- true
+				return
+			}
+		} else if gospiderFlag {
+			urls, err = fetchGospiderURLs(domain)
+			if err != nil {
+				fmt.Printf("  %s Failed to fetch URLs for %s: %v\n", 
+					colorizeText("✗", "red"), 
+					colorizeText(domain, "white"), 
+					err)
+				done <- true
+				return
+			}
+		} else if hakrawlerFlag {
+			urls, err = fetchHakrawlerURLs(domain)
 			if err != nil {
 				fmt.Printf("  %s Failed to fetch URLs for %s: %v\n", 
 					colorizeText("✗", "red"), 
@@ -1291,7 +1735,26 @@ func main() {
 		return
 	}
 
-	if !waybackFlag && !gauFlag {
+	// Check if -all flag is used
+	if allFlag {
+		// Ensure -all is only used with a single domain
+		if listFlag != "" {
+			log.Fatalf("%s The -all flag can only be used with a single domain (-url). It is not compatible with -list.", colorizeText("[ERROR]", "red"))
+			return
+		}
+		
+		// Enable all URL collection methods
+		waybackFlag = true
+		gauFlag = true
+		katanaFlag = true
+		urlfindFlag = true
+		arjunFlag = true
+		gospiderFlag = true
+		hakrawlerFlag = true
+		
+		fmt.Printf("%s Using all URL collection methods for comprehensive scanning.\n", 
+			colorizeText("[INFO]", "green"))
+	} else if !waybackFlag && !gauFlag && !katanaFlag && !urlfindFlag && !arjunFlag && !gospiderFlag && !hakrawlerFlag {
 		// Enable gau by default if no tool is specified
 		fmt.Printf("%s No URL collection method specified. Using GAU by default.\n", 
 			colorizeText("[INFO]", "yellow"))
@@ -1302,6 +1765,21 @@ func main() {
 	requiredTools := []string{"gf", "uro", "Gxss", "kxss"}
 	if gauFlag {
 		requiredTools = append(requiredTools, "gau")
+	}
+	if katanaFlag {
+		requiredTools = append(requiredTools, "katana")
+	}
+	if urlfindFlag {
+		requiredTools = append(requiredTools, "urlfinder")
+	}
+	if arjunFlag {
+		requiredTools = append(requiredTools, "arjun")
+	}
+	if gospiderFlag {
+		requiredTools = append(requiredTools, "gospider")
+	}
+	if hakrawlerFlag {
+		requiredTools = append(requiredTools, "hakrawler")
 	}
 	
 	// Check for each tool
