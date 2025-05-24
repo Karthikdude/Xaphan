@@ -818,12 +818,12 @@ func fetchKatanaURLs(domain string) ([]string, error) {
 	defer os.Remove(tmpFile.Name())
 	tmpFile.Close()
 	
-	// Construct the katana command
+	// Construct the katana command with correct flags
 	var cmd *exec.Cmd
 	if proxyFlag != "" {
-		cmd = exec.Command("katana", "-u", domain, "-proxy", proxyFlag, "-o", tmpFile.Name(), "-silent")
+		cmd = exec.Command("katana", "-u", "https://"+domain, "-d", fmt.Sprintf("%d", scanDepthFlag), "-jc", "-proxy", proxyFlag, "-o", tmpFile.Name(), "-silent")
 	} else {
-		cmd = exec.Command("katana", "-u", domain, "-o", tmpFile.Name(), "-silent")
+		cmd = exec.Command("katana", "-u", "https://"+domain, "-d", fmt.Sprintf("%d", scanDepthFlag), "-jc", "-o", tmpFile.Name(), "-silent")
 	}
 	
 	log.Debugf("Running command: %s", cmd.String())
@@ -832,13 +832,41 @@ func fetchKatanaURLs(domain string) ([]string, error) {
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Debugf("katana command output: %s", string(output))
-		return nil, fmt.Errorf("failed to run katana: %v", err)
+		
+		// Try alternative command format without -silent flag
+		if proxyFlag != "" {
+			cmd = exec.Command("katana", "-u", "https://"+domain, "-d", fmt.Sprintf("%d", scanDepthFlag), "-jc", "-proxy", proxyFlag, "-o", tmpFile.Name())
+		} else {
+			cmd = exec.Command("katana", "-u", "https://"+domain, "-d", fmt.Sprintf("%d", scanDepthFlag), "-jc", "-o", tmpFile.Name())
+		}
+		
+		output, err = cmd.CombinedOutput()
+		if err != nil {
+			log.Debugf("alternative katana command output: %s", string(output))
+			return nil, fmt.Errorf("failed to run katana: %v (output: %s)", err, string(output))
+		}
 	}
 	
 	// Read the output file
 	data, err := ioutil.ReadFile(tmpFile.Name())
 	if err != nil {
 		return nil, fmt.Errorf("failed to read katana output: %v", err)
+	}
+	
+	// If the file is empty, try to get output directly
+	if len(data) == 0 {
+		// Try direct execution
+		if proxyFlag != "" {
+			cmd = exec.Command("katana", "-u", "https://"+domain, "-d", fmt.Sprintf("%d", scanDepthFlag), "-jc", "-proxy", proxyFlag)
+		} else {
+			cmd = exec.Command("katana", "-u", "https://"+domain, "-d", fmt.Sprintf("%d", scanDepthFlag), "-jc")
+		}
+		
+		data, err = cmd.CombinedOutput()
+		if err != nil {
+			log.Debugf("direct katana command output: %s", string(data))
+			return nil, fmt.Errorf("failed to run direct katana: %v", err)
+		}
 	}
 	
 	// Split the output into lines
@@ -849,7 +877,17 @@ func fetchKatanaURLs(domain string) ([]string, error) {
 	for _, url := range urls {
 		url = strings.TrimSpace(url)
 		if url != "" && !shouldExcludeURL(url) {
-			filteredURLs = append(filteredURLs, url)
+			// Check if this is a JSON line (katana can output JSONL)
+			if strings.HasPrefix(url, "{") && strings.HasSuffix(url, "}") {
+				var result map[string]interface{}
+				if err := json.Unmarshal([]byte(url), &result); err == nil {
+					if urlStr, ok := result["url"].(string); ok && urlStr != "" && !shouldExcludeURL(urlStr) {
+						filteredURLs = append(filteredURLs, urlStr)
+					}
+				}
+			} else {
+				filteredURLs = append(filteredURLs, url)
+			}
 		}
 	}
 	
@@ -907,19 +945,19 @@ func fetchUrlfinderURLs(domain string) ([]string, error) {
 // fetchArjunParams uses Arjun to find query parameters
 func fetchArjunParams(domain string) ([]string, error) {
 	// Create a temporary file to store the output
-	tmpFile, err := ioutil.TempFile("", "arjun-output-*.txt")
+	tmpFile, err := ioutil.TempFile("", "arjun-output-*.json")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create temp file: %v", err)
 	}
 	defer os.Remove(tmpFile.Name())
 	tmpFile.Close()
 	
-	// Construct the arjun command
+	// Construct the arjun command with correct syntax
 	var cmd *exec.Cmd
 	if proxyFlag != "" {
-		cmd = exec.Command("arjun", "-u", "https://"+domain, "--get", "--proxy", proxyFlag, "-o", tmpFile.Name())
+		cmd = exec.Command("arjun", "-u", "https://"+domain, "-m", "GET", "-o", tmpFile.Name(), "--headers", "User-Agent: "+getRandomUserAgent())
 	} else {
-		cmd = exec.Command("arjun", "-u", "https://"+domain, "--get", "-o", tmpFile.Name())
+		cmd = exec.Command("arjun", "-u", "https://"+domain, "-m", "GET", "-o", tmpFile.Name())
 	}
 	
 	log.Debugf("Running command: %s", cmd.String())
@@ -928,7 +966,7 @@ func fetchArjunParams(domain string) ([]string, error) {
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Debugf("arjun command output: %s", string(output))
-		return nil, fmt.Errorf("failed to run arjun: %v", err)
+		return nil, fmt.Errorf("failed to run arjun: %v (output: %s)", err, string(output))
 	}
 	
 	// Read the output file
@@ -941,7 +979,7 @@ func fetchArjunParams(domain string) ([]string, error) {
 	var result map[string]interface{}
 	err = json.Unmarshal(data, &result)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse arjun output: %v", err)
+		return nil, fmt.Errorf("failed to parse arjun output: %v (raw data: %s)", err, string(data))
 	}
 	
 	// Extract parameters and construct URLs
@@ -953,6 +991,14 @@ func fetchArjunParams(domain string) ([]string, error) {
 				urls = append(urls, url)
 			}
 		}
+	} else {
+		// Try alternative parameter extraction if the expected format is not found
+		for key := range result {
+			if key != "params" && key != "url" && key != "method" {
+				url := fmt.Sprintf("https://%s/?%s=xss", domain, key)
+				urls = append(urls, url)
+			}
+		}
 	}
 	
 	return urls, nil
@@ -960,20 +1006,19 @@ func fetchArjunParams(domain string) ([]string, error) {
 
 // fetchGospiderURLs uses Gospider for web crawling
 func fetchGospiderURLs(domain string) ([]string, error) {
-	// Create a temporary file to store the output
-	tmpFile, err := ioutil.TempFile("", "gospider-output-*.txt")
+	// Create a temporary directory to store the output
+	tmpDir, err := ioutil.TempDir("", "gospider-output-*")
 	if err != nil {
-		return nil, fmt.Errorf("failed to create temp file: %v", err)
+		return nil, fmt.Errorf("failed to create temp directory: %v", err)
 	}
-	defer os.Remove(tmpFile.Name())
-	tmpFile.Close()
+	defer os.RemoveAll(tmpDir)
 	
-	// Construct the gospider command
+	// Construct the gospider command with correct flags
 	var cmd *exec.Cmd
 	if proxyFlag != "" {
-		cmd = exec.Command("gospider", "-s", "https://"+domain, "-d", fmt.Sprintf("%d", scanDepthFlag), "-c", "10", "--proxy", proxyFlag, "-o", tmpFile.Name())
+		cmd = exec.Command("gospider", "-s", "https://"+domain, "-d", fmt.Sprintf("%d", scanDepthFlag), "-c", "10", "-t", "5", "-a", "-r", "--sitemap", "--robots", "--other-source", "--include-subs", "--proxy", proxyFlag, "-o", tmpDir)
 	} else {
-		cmd = exec.Command("gospider", "-s", "https://"+domain, "-d", fmt.Sprintf("%d", scanDepthFlag), "-c", "10", "-o", tmpFile.Name())
+		cmd = exec.Command("gospider", "-s", "https://"+domain, "-d", fmt.Sprintf("%d", scanDepthFlag), "-c", "10", "-t", "5", "-a", "-r", "--sitemap", "--robots", "--other-source", "--include-subs", "-o", tmpDir)
 	}
 	
 	log.Debugf("Running command: %s", cmd.String())
@@ -982,27 +1027,84 @@ func fetchGospiderURLs(domain string) ([]string, error) {
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Debugf("gospider command output: %s", string(output))
-		return nil, fmt.Errorf("failed to run gospider: %v", err)
+		
+		// Try alternative command format
+		if proxyFlag != "" {
+			cmd = exec.Command("gospider", "-s", "https://"+domain, "-d", fmt.Sprintf("%d", scanDepthFlag), "-c", "10", "--proxy", proxyFlag)
+		} else {
+			cmd = exec.Command("gospider", "-s", "https://"+domain, "-d", fmt.Sprintf("%d", scanDepthFlag), "-c", "10")
+		}
+		
+		output, err = cmd.CombinedOutput()
+		if err != nil {
+			log.Debugf("alternative gospider command output: %s", string(output))
+			return nil, fmt.Errorf("failed to run gospider: %v (output: %s)", err, string(output))
+		}
+		
+		// Process direct output
+		return processGospiderOutput(string(output))
 	}
 	
-	// Read the output file
-	data, err := ioutil.ReadFile(tmpFile.Name())
+	// Read all files in the output directory
+	files, err := ioutil.ReadDir(tmpDir)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read gospider output: %v", err)
+		return nil, fmt.Errorf("failed to read gospider output directory: %v", err)
 	}
 	
+	// Combine all output files
+	var allData string
+	for _, file := range files {
+		if !file.IsDir() {
+			filePath := filepath.Join(tmpDir, file.Name())
+			data, err := ioutil.ReadFile(filePath)
+			if err != nil {
+				log.Debugf("Failed to read gospider output file %s: %v", filePath, err)
+				continue
+			}
+			allData += string(data) + "\n"
+		}
+	}
+	
+	// If no files were found or all were empty, try direct output
+	if allData == "" {
+		return processGospiderOutput(string(output))
+	}
+	
+	return processGospiderOutput(allData)
+}
+
+// Helper function to process Gospider output and extract URLs
+func processGospiderOutput(output string) ([]string, error) {
 	// Split the output into lines
-	lines := strings.Split(string(data), "\n")
+	lines := strings.Split(output, "\n")
 	
 	// Extract URLs from the output
 	var urls []string
 	for _, line := range lines {
-		// Gospider output format: [url] - [found_url]
+		// Try different Gospider output formats
+		
+		// Format 1: [url] - [found_url]
 		parts := strings.Split(line, " - ")
 		if len(parts) >= 2 {
 			url := strings.TrimSpace(parts[1])
 			if url != "" && !shouldExcludeURL(url) {
 				urls = append(urls, url)
+			}
+			continue
+		}
+		
+		// Format 2: [found_url]
+		// Look for http:// or https:// in the line
+		if strings.Contains(line, "http://") || strings.Contains(line, "https://") {
+			// Extract URL using regex
+			urlPattern := `https?://[^\s"']+`
+			re := regexp.MustCompile(urlPattern)
+			matches := re.FindAllString(line, -1)
+			
+			for _, match := range matches {
+				if !shouldExcludeURL(match) {
+					urls = append(urls, match)
+				}
 			}
 		}
 	}
@@ -1020,12 +1122,35 @@ func fetchHakrawlerURLs(domain string) ([]string, error) {
 	defer os.Remove(tmpFile.Name())
 	tmpFile.Close()
 	
-	// Construct the hakrawler command
+	// Create a temporary file with the domain
+	domainFile, err := ioutil.TempFile("", "hakrawler-domain-*.txt")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create domain file: %v", err)
+	}
+	defer os.Remove(domainFile.Name())
+	
+	// Write domain to the file
+	_, err = domainFile.WriteString("https://" + domain)
+	if err != nil {
+		return nil, fmt.Errorf("failed to write to domain file: %v", err)
+	}
+	domainFile.Close()
+	
+	// Hakrawler expects input from stdin or a pipe
+	// We'll use cat/type to pipe the domain into hakrawler
 	var cmd *exec.Cmd
-	if proxyFlag != "" {
-		cmd = exec.Command("hakrawler", "-domain", domain, "-depth", fmt.Sprintf("%d", scanDepthFlag), "-proxy", proxyFlag, "-outfile", tmpFile.Name())
+	if runtime.GOOS == "windows" {
+		if proxyFlag != "" {
+			cmd = exec.Command("powershell", "-Command", "Get-Content "+domainFile.Name()+" | hakrawler -d "+fmt.Sprintf("%d", scanDepthFlag)+" -u -t 8 -proxy "+proxyFlag+" > "+tmpFile.Name())
+		} else {
+			cmd = exec.Command("powershell", "-Command", "Get-Content "+domainFile.Name()+" | hakrawler -d "+fmt.Sprintf("%d", scanDepthFlag)+" -u -t 8 > "+tmpFile.Name())
+		}
 	} else {
-		cmd = exec.Command("hakrawler", "-domain", domain, "-depth", fmt.Sprintf("%d", scanDepthFlag), "-outfile", tmpFile.Name())
+		if proxyFlag != "" {
+			cmd = exec.Command("bash", "-c", "cat "+domainFile.Name()+" | hakrawler -d "+fmt.Sprintf("%d", scanDepthFlag)+" -u -t 8 -proxy "+proxyFlag+" > "+tmpFile.Name())
+		} else {
+			cmd = exec.Command("bash", "-c", "cat "+domainFile.Name()+" | hakrawler -d "+fmt.Sprintf("%d", scanDepthFlag)+" -u -t 8 > "+tmpFile.Name())
+		}
 	}
 	
 	log.Debugf("Running command: %s", cmd.String())
@@ -1034,13 +1159,29 @@ func fetchHakrawlerURLs(domain string) ([]string, error) {
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Debugf("hakrawler command output: %s", string(output))
-		return nil, fmt.Errorf("failed to run hakrawler: %v", err)
+		return nil, fmt.Errorf("failed to run hakrawler: %v (output: %s)", err, string(output))
 	}
 	
 	// Read the output file
 	data, err := ioutil.ReadFile(tmpFile.Name())
 	if err != nil {
 		return nil, fmt.Errorf("failed to read hakrawler output: %v", err)
+	}
+	
+	// If the file is empty, try to get output directly
+	if len(data) == 0 {
+		// Try direct execution
+		if runtime.GOOS == "windows" {
+			cmd = exec.Command("powershell", "-Command", "echo https://"+domain+" | hakrawler -d "+fmt.Sprintf("%d", scanDepthFlag)+" -u -t 8")
+		} else {
+			cmd = exec.Command("bash", "-c", "echo https://"+domain+" | hakrawler -d "+fmt.Sprintf("%d", scanDepthFlag)+" -u -t 8")
+		}
+		
+		data, err = cmd.CombinedOutput()
+		if err != nil {
+			log.Debugf("direct hakrawler command output: %s", string(data))
+			return nil, fmt.Errorf("failed to run direct hakrawler: %v", err)
+		}
 	}
 	
 	// Split the output into lines
