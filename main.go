@@ -141,7 +141,7 @@ func init() {
 }
 
 func displayBanner() {
-	version := "v2.0.0"
+	version := "v3.0.0"
 	
 	fmt.Println()
 	fmt.Println("  " + colorizeText("✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧✧", "cyan"))
