@@ -185,11 +185,6 @@ As of `v3.0.0`, Xaphan features a highly decoupled architecture inside `pkg/`:
 * `reporter/`: Formatters for CLI, HTML, and JSON representations.
 * `runner/`: Go-routine orchestration.
 
-To run the unit and integration tests:
-```bash
-go test ./...
-```
-
 ---
 
 ## 🤝 Contributing
