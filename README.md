@@ -1,308 +1,219 @@
-# Xaphan
+<div align="center">
+  <img src="Xaphan.webp" alt="Xaphan Logo" width="400"/>
 
-![Xaphan](Xaphan.jpg)
+  # Xaphan
 
-## Introduction
+  **An Advanced Automated Cross-Site Scripting (XSS) Vulnerability Scanner**
 
-Xaphan is a command-line tool designed to automate the detection of Cross-Site Scripting (XSS) vulnerabilities by identifying unfiltered parameters in web applications. It leverages various tools and APIs to fetch URLs, analyze them for potential XSS risks, and provide detailed reports. Xaphan is built to be efficient, easy to use, and highly customizable, making it a valuable asset for security professionals and developers alike.
+  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+  [![Go Version](https://img.shields.io/badge/Go-%3E%3D%201.20-blue.svg)](https://golang.org/)
+  [![Release](https://img.shields.io/github/v/release/Karthikdude/Xaphan.svg)](https://github.com/Karthikdude/Xaphan/releases)
 
-## Version 3.0 Highlights
-
-- **Comprehensive Scanning**: New `-all` command to use all URL extractor tools for thorough scanning
-- **Scan Type Display**: Visual indicators showing whether a scan is passive or active
-- **Additional Tool Integration**: Support for Katana, URLFinder, Arjun, Gospider, and Hakrawler
-- **Parallel Processing**: Run multiple tools simultaneously with the `-all` flag
-- **Improved URL Deduplication**: Efficiently combine and deduplicate URLs from multiple sources
-
-## Version 2.0 Highlights
-
-- **New Modern UI**: Improved banner display and progress indicators
-- **URL Saving Functionality**: Save URLs at different stages of the pipeline process
-- **Enhanced Tool Integration**: Better compatibility with Gxss, kxss and uro tools
-- **Cross-Platform Support**: Improved support for both Windows and Unix-based systems
-- **More Detailed Output**: Better feedback during the scanning process
-
-## Features
-
-- **Automated XSS Detection**: Automatically detects XSS vulnerabilities in web applications.
-- **Multiple URL Fetching Options**: Supports fetching URLs using Wayback Machine, gau, Katana, URLFinder, Arjun, Gospider, Hakrawler, and more.
-- **Comprehensive Scanning**: Use the `-all` flag to run all URL collection tools simultaneously for maximum coverage.
-- **Scan Type Indicators**: Visual indicators showing whether a scan is passive (green) or active (red).
-- **URL Saving Functionality**: Save collected URLs at different stages (raw, after GF, after URO).
-- **Detailed Reporting**: Provides detailed and JSON formatted reports of the findings.
-- **Verbose Output**: Offers verbose output for detailed inspection.
-- **HTTP Response Status Check**: Checks the HTTP response status codes of the URLs.
-- **Concurrent Processing**: Utilizes multiple threads for concurrent processing of domains, significantly speeding up the scanning process.
-- **Rate Limiting**: Implements rate limiting to avoid overwhelming APIs and external services.
-- **Customizable Timeout**: Allows users to set custom timeouts for URL collection and status checks.
-- **Progress Tracking**: Displays real-time progress for long-running scans.
-- **User Agent Randomization**: Randomizes user agents to avoid detection.
-- **Proxy Support**: Allows the use of proxies for anonymity.
-- **URL Filtering**: Excludes URLs containing specific patterns.
-- **Retry Mechanism**: Automatically retries failed requests.
-- **HTML Reports**: Generates visually appealing HTML reports with statistics.
-- **Cross-Platform Compatibility**: Works seamlessly across Windows, Linux, and macOS.
-
-## Installation
-
-To install Xaphan, follow these steps:
-
-1. **Clone the Repository**:
-   ```sh
-   git clone https://github.com/Karthikdude/Xaphan
-   cd Xaphan
-   ```
-
-2. **Install Dependencies**:
-   ```sh
-   go mod tidy
-   ```
-
-3. **Install Additional Tools**:
-   - Ensure you have the following tools installed. You can install them using the following commands:
-     ```sh
-     # Core tools
-     go install github.com/lc/gau/v2/cmd/gau@latest
-     go install github.com/tomnomnom/waybackurls@latest
-     go install github.com/tomnomnom/gf@latest
-     go install github.com/s0md3v/uro@latest
-     go install github.com/KathanP19/Gxss@latest
-     go install github.com/Emoe/kxss@latest
-     
-     # New tools
-     go install -v github.com/projectdiscovery/katana/cmd/katana@latest
-     go install -v github.com/projectdiscovery/urlfinder/cmd/urlfinder@latest
-     go install github.com/hakluke/hakrawler@latest
-     go install github.com/jaeles-project/gospider@latest
-     pip install arjun  # or use pipx: pipx install arjun
-     ```
-
-4. **Build the Tool**:
-   ```sh
-    go build -o xaphan main.go
-   ```
-   **Replace the Existing Binary: If you previously moved the binary to /usr/local/bin**:
-   ```sh
-    sudo mv xaphan /usr/local/bin/
-   ```
-## Common Errors and Solutions
-
-   [Additional Details and Steps](issues.md)
+</div>
 
 ---
 
-## Usage
+## 📖 Introduction
 
-![Usage](usage.png)
+**Xaphan** is a powerful, highly-customizable command-line tool designed to automate the detection of Cross-Site Scripting (XSS) vulnerabilities. By identifying unfiltered parameters in web applications across a multitude of sources, it provides security professionals and developers with a comprehensive, reliable analysis of potential attack vectors.
 
+Xaphan is built to be efficient, easy to use, and integrates seamlessly into security workflows.
 
-### Basic Usage
+---
 
-To scan a single domain:
-```sh
+## ✨ Key Features
+
+- **Automated XSS Detection**: Rapidly identifies potential XSS vulnerabilities in web applications.
+- **Extensive URL Fetching**: Supports multiple robust gathering methods—both passive (`Wayback Machine`, `gau`, `URLFinder`) and active (`Katana`, `Arjun`, `Gospider`, `Hakrawler`).
+- **Comprehensive Scanning (`-all`)**: Maximize coverage by running all URL collection tools simultaneously.
+- **Actionable Reporting**: Provides intuitive CLI feedback, detailed JSON exports, and stunning HTML visualizations.
+- **Pipeline Checkpoints**: Save raw, GF-filtered, or URO-optimized URLs locally to chain with other tools.
+- **Highly Performant**: Concurrent processing via scalable worker threads drastically reduces scan times.
+- **Stealth & Stability**: Built-in User-Agent randomization, HTTP proxy support, customizable timeouts, and request retries.
+
+### 🆕 What's New in Version 3.0?
+
+* **Modular Architecture**: Completely refactored the Go codebase into a clean, maintainable package structure (`core`, `fetcher`, `scanner`, `reporter`, `runner`).
+* **Test Coverage**: Added distinct unit, component, and integration tests to ensure reliability.
+* **Scan Type Display**: Visual indicators in the console distinguish between **Passive** (green) and **Active** (red) scans.
+* **Expanded Tool Arsenal**: Native integration with `Katana`, `URLFinder`, `Arjun`, `Gospider`, and `Hakrawler`.
+* **Parallel Extraction (`-all`)**: The new `-all` flag aggregates and deduplicates results from all active and passive collectors in record time.
+
+---
+
+## 🚀 Installation & Setup
+
+Xaphan utilizes advanced pattern matching and rendering engines. Ensure you have **Go 1.20+** installed, along with the required companion tools.
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/Karthikdude/Xaphan
+cd Xaphan
+```
+
+### 2. Install Dependencies
+
+```bash
+go mod tidy
+```
+
+### 3. Install Required Companion Tools
+
+Xaphan dynamically wraps several of the community's best URL extraction and parsing tools. You must have them accessible in your system's `$PATH`.
+
+```bash
+# Core Tools
+go install github.com/lc/gau/v2/cmd/gau@latest
+go install github.com/tomnomnom/waybackurls@latest
+go install github.com/tomnomnom/gf@latest
+go install github.com/s0md3v/uro@latest
+go install github.com/KathanP19/Gxss@latest
+go install github.com/Emoe/kxss@latest
+
+# Advanced Gatherers (Required for full capabilities)
+go install -v github.com/projectdiscovery/katana/cmd/katana@latest
+go install -v github.com/projectdiscovery/urlfinder/cmd/urlfinder@latest
+go install github.com/hakluke/hakrawler@latest
+go install github.com/jaeles-project/gospider@latest
+pip install arjun  # or use pipx: pipx install arjun
+```
+
+### 4. Build and Install
+
+```bash
+go build -o xaphan main.go
+sudo mv xaphan /usr/local/bin/
+```
+
+> **Note:** If you run into command-not-found issues with tools like `gau` or `gf`, ensure your `~/go/bin` directory is in your `$PATH`.
+
+---
+
+## 🛠️ Usage Guide
+
+Xaphan's command-line interface is intuitive. See exactly what is happening under the hood with verbose logging, or keep it quiet for CI/CD integrations.
+
+![Xaphan Usage](usage.png)
+
+### Basic Scans
+
+**Scan a single domain (Passive):**
+```bash
+xaphan -url testphp.vulnweb.com -gau
+# or
 xaphan -url testphp.vulnweb.com -wayback
 ```
-or
-```sh
-xaphan -url testphp.vulnweb.com -gau
+
+**Scan a list of domains from a file (Passive):**
+```bash
+xaphan -list targets.txt -gau
 ```
 
-To scan a list of domains from a file:
-```sh
-xaphan -list domains.txt -wayback
-```
-or
-```sh
-xaphan -list domains.txt -gau
-```
+### Advanced Workflows
 
-### Options
-
-- `-url`: Scan a single domain.
-- `-list`: File containing a list of domains to scan.
-- `-wayback`: Use Wayback Machine to fetch URLs (passive).
-- `-gau`: Use gau to fetch URLs (passive).
-- `-urlfinder`: Use URLFinder to extract URLs from JavaScript files (passive).
-- `-katana`: Use Katana crawler to fetch URLs (active).
-- `-gospider`: Use Gospider for web crawling (active).
-- `-hakrawler`: Use Hakrawler for web crawling (active).
-- `-arjun`: Use Arjun to find query parameters (active).
-- `-all`: Use all URL extractor tools for comprehensive scanning (only for single domain).
-- `-verbose`: Enable verbose output.
-- `-response`: Display HTTP response status codes.
-- `-json`: Save results in JSON format.
-- `-detailed`: Save detailed report to a file.
-- `-html`: Save results in HTML format with visualizations.
-- `-save`: Save raw URLs collected from Wayback/GAU to a file.
-- `-save-gf`: Save URLs after GF XSS filtering to a file.
-- `-save-uro`: Save URLs after URO optimization to a file.
-- `-proxy`: Use a proxy for HTTP requests (e.g., http://127.0.0.1:8080).
-- `-depth`: Set the maximum scan depth (default: 2).
-- `-exclude`: Exclude URLs containing specific patterns (comma-separated).
-- `-timeout`: Set timeout for requests in seconds (default: 30).
-- `-retry`: Set the number of retry attempts for failed requests (default: 3).
-- `-t`: Number of threads to use for concurrent processing (default: 50).
-- `-h`: Show this help message and exit.
-
-### Example
-
-```sh
-xaphan -url testphp.vulnweb.com -gau -json output.json
-```
-
-### Additional Examples
-
-Scan a domain using wayback with HTML report:
-```sh
-xaphan -url testphp.vulnweb.com -wayback -html report.html
-```
-
-Save URLs at different stages of processing:
-```sh
-xaphan -url testphp.vulnweb.com -gau -save raw-urls.txt -save-gf gf-urls.txt -save-uro uro-urls.txt
-```
-
-Scan with proxy and exclude certain paths:
-```sh
-xaphan -url testphp.vulnweb.com -gau -proxy http://127.0.0.1:8080 -exclude login,admin,static
-```
-
-Scan multiple domains with custom timeout and retry:
-```sh
-xaphan -list domains.txt -gau -timeout 60 -retry 5 -t 100
-```
-
-Comprehensive scan using all tools for a single domain:
-```sh
+**1. The "Kitchen Sink" Scan**
+Run all known active and passive fetchers concurrently against a single target, printing verbose output:
+```bash
 xaphan -url example.com -all -verbose
 ```
 
-Active scanning with Katana crawler:
-```sh
+**2. Active Deep Crawl with Katana**
+Crawl specifically using Katana up to 3 directories deep:
+```bash
 xaphan -url example.com -katana -depth 3
 ```
 
-Combining passive tools for non-intrusive scanning:
-```sh
-xaphan -url example.com -wayback -gau -urlfinder
+**3. Generate Stakeholder Reports**
+Scan passively via Wayback Machine and output an interactive HTML report:
+```bash
+xaphan -url testphp.vulnweb.com -wayback -html report.html
 ```
 
-## URL Saving Functionality
-
-Version 2.0 introduces the ability to save URLs at different stages of the processing pipeline:
-
-- `-save filename.txt`: Saves the raw URLs collected from Wayback Machine or GAU
-- `-save-gf filename.txt`: Saves URLs after they've been filtered by GF's XSS pattern matcher
-- `-save-uro filename.txt`: Saves URLs after they've been optimized by URO
-
-The saved files will include the domain name and stage in the filename, for example:
-- `filename-example.com-raw.txt`
-- `filename-example.com-gf.txt`
-- `filename-example.com-uro.txt`
-
-This functionality is particularly useful for:
-- Debugging the scanning process
-- Using the collected URLs with other tools
-- Running multiple analyses on the same set of URLs
-- Creating a dataset of potentially vulnerable endpoints
-
-## Tools
-
-Xaphan utilizes the following tools for URL fetching and XSS detection:
-
-| Tool         | Description                                                                 | Type    |
-|--------------|-----------------------------------------------------------------------------|--------|
-| **gau**      | A fast URL collector.                                                         | Passive |
-| **waybackurls** | Fetches URLs from the Wayback Machine.                                       | Passive |
-| **urlfinder**| Extracts URLs from JavaScript files.                                          | Passive |
-| **katana**   | A fast crawler designed to crawl web applications.                            | Active  |
-| **gospider** | A web spider that crawls websites and extracts URLs.                          | Active  |
-| **hakrawler**| A fast web crawler designed for easy, quick discovery of endpoints.          | Active  |
-| **arjun**    | HTTP parameter discovery suite to find query parameters.                      | Active  |
-| **gf**       | A grep for URLs.                                                              | Utility |
-| **uro**      | A tool to unfurl and rebuild URLs.                                           | Utility |
-| **Gxss**     | A tool to detect XSS vulnerabilities.                                          | Testing |
-| **kxss**     | A tool to detect XSS vulnerabilities.                                          | Testing |
-
-## Results
-
-![Results](results.png)
-
-Xaphan provides detailed results for each domain scanned. The results include:
-
-- **Timestamp**: The time when the scan was performed.
-- **Severity**: The severity level of the XSS vulnerability (CRITICAL, MEDIUM, LOW, SAFE).
-- **URL**: The URL where the XSS vulnerability was found.
-- **Status**: The HTTP response status code.
-- **Unfiltered Symbols**: The symbols that were found unfiltered in the URL.
-
-## HTML Reports
-
-The HTML report provides a visual representation of the scan results, including:
-
-- A summary of all findings categorized by severity
-- Detailed information about each vulnerability
-- Color-coded entries based on severity
-- Statistics about the scan
-
-To generate an HTML report, use the `-html` flag followed by the output file name:
-
-```sh
-xaphan -url testphp.vulnweb.com -gau -html report.html
+**4. Pipeline Tool Chaining**
+If you want to view exactly what Xaphan is extracting at each stage of its pipeline (`raw` -> `gf` -> `uro`):
+```bash
+xaphan -url testphp.vulnweb.com -gau -save raw-urls.txt -save-gf gf-urls.txt -save-uro uro-urls.txt
 ```
 
-## Changelog
+---
 
-### Version 3.0.0
-- Added support for additional tools: Katana, URLFinder, Arjun, Gospider, and Hakrawler
-- Implemented the `-all` flag for comprehensive scanning using all tools
-- Added scan type indicators (Passive/Active) for better visibility
-- Improved parallel processing for multiple tools
-- Enhanced URL deduplication for combined results
-- Added detailed progress reporting for comprehensive scans
+## ⚙️ Configuration Options
 
-### Version 2.0.0
-- New modern UI with improved banner display
-- Added URL saving functionality at different pipeline stages
-- Enhanced tool integration with better command handling
-- Improved cross-platform support
-- Fixed issues with GAU, Gxss and kxss integration
-- Better handling of command outputs and error messages
+| Flag | Description | Type |
+|---|---|---|
+| `-url` | Scan a single domain | String |
+| `-list` | File containing a list of domains to scan | String |
+| `-all` | Use **all** URL extractor tools for comprehensive scanning | Bool |
+| `-gau` / `-wayback` | Passive: Use GAU or Wayback Machine | Bool |
+| `-katana` / `-gospider` | Active: Use Katana or Gospider web crawlers | Bool |
+| `-arjun` | Active: Discover hidden query parameters | Bool |
+| `-urlfinder` | Passive: Extract URLs from JS files | Bool |
+| `-hakrawler` | Active: Fast endpoint discovery | Bool |
+| `-verbose` | Enable verbose, detailed terminal output | Bool |
+| `-response` | Display HTTP response status codes for vulnerable endpoints | Bool |
+| `-html` / `-json` | Save findings into HTML or JSON formats | String |
+| `-proxy` | Proxy traffic (e.g., `http://127.0.0.1:8080`) | String |
+| `-exclude` | Exclude URLs matching comma-separated patterns (e.g. `logout,admin`) | String |
+| `-t` | Number of concurrent threads (Default: 50) | Int |
+| `-depth` | Maximum crawling depth for active scanners (Default: 2) | Int |
 
-### Version 1.1.0
-- Added HTML report generation
-- Improved error handling
-- Enhanced user agent randomization 
-- Added proxy support
-- Added retry mechanism for failed requests
+---
 
-### Version 1.0.0
-- Initial release
-- Basic XSS scanning functionality
-- Support for Wayback Machine and GAU URL collection
+## 📊 Results & Reporting
 
-## Contributing
+![Scan Results](results.png)
 
-Contributions are welcome! Please feel free to submit issues and enhancement requests. If you would like to contribute, follow these steps:
+When vulnerabilities are discovered, Xaphan categorizes them explicitly:
+
+* **[CRITICAL]** - High predictability of execution (contains symbols like `<`, `>`, `"`, `'`, `script`, `onerror`).
+* **[MEDIUM]** - Contains potentially manipulatable boundaries (e.g., `$`, `|`, `eval`, `alert`).
+* **[LOW]** - Low risk but potentially unescaped artifacts (`[`, `]`, `\`).
+* **[SAFE]** - Analyzed, but no immediate risk identified.
+
+### Export Formats
+Xaphan supports clean tabular console output, structured log files (`-detailed`), machine-readable `JSON`, or clean `HTML` dashboard templates suitable for client delivery.
+
+---
+
+## 🛠️ Architecture
+
+As of `v3.0.0`, Xaphan features a highly decoupled architecture inside `pkg/`:
+* `core/`: Configurations and state management.
+* `fetcher/`: Connectors for Wayback, GAU, Katana, Arjun, etc.
+* `scanner/`: Execution wrappers for GF and URO, feeding data to Gxss and kxss.
+* `reporter/`: Formatters for CLI, HTML, and JSON representations.
+* `runner/`: Go-routine orchestration.
+
+To run the unit and integration tests:
+```bash
+go test ./...
+```
+
+---
+
+## 🤝 Contributing
+
+Contributions are incredibly welcome!
 
 1. Fork the repository.
-2. Create a new branch (`git checkout -b feature-branch`).
-3. Commit your changes (`git commit -am 'Add new feature'`).
-4. Push to the branch (`git push origin feature-branch`).
-5. Create a new Pull Request.
+2. Create a feature branch: `git checkout -b feature/amazing-feature`.
+3. Commit your changes: `git commit -m 'Added an amazing feature'`.
+4. Push to the branch: `git push origin feature/amazing-feature`.
+5. Open a Pull Request!
 
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
-## Contact
-
-For more information, please contact [Karthik S Sathyan](https://karthik-s-sathyan.vercel.app).
+If you encounter issues such as dependency hiccups with specific GOOS architectures, please check the [Common Errors & Solutions](issues.md) document first.
 
 ---
 
-Developed by Karthik S Sathyan.  [LinkedIn](https://www.linkedin.com/in/karthik-s-sathyan/)
+## 📜 License & Author
 
----
+**License:** Distributed under the [MIT License](LICENSE).
 
+**Developed with ❤️ by Karthik S Sathyan**
+* 🌐 **Website:** [Karthik's Portfolio](https://karthik-s-sathyan.vercel.app)
+* 💼 **LinkedIn:** [karthik-s-sathyan](https://www.linkedin.com/in/karthik-s-sathyan/)
 
+<div align="center">
+  <i>"Automating reconnaissance, securing the web."</i>
+</div>

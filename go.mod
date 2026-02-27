@@ -1,4 +1,4 @@
-module xaphan-go
+module github.com/Karthikdude/Xaphan
 
 go 1.20
 
