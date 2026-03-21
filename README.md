@@ -50,10 +50,10 @@ Xaphan utilizes advanced pattern matching and rendering engines. Ensure you have
 The fastest way to install Xaphan directly using Go:
 
 ```bash
-go install github.com/Karthikdude/Xaphan@latest
+go install github.com/Karthikdude/Xaphan/cmd/xaphan@latest
 ```
 
-This will download and install the latest version to your `$GOBIN` (typically `~/go/bin`). Ensure this directory is in your `$PATH`.
+This will download and install the `xaphan` binary to your `$GOBIN` (typically `~/go/bin`). Ensure this directory is in your `$PATH`.
 
 ### Manual Installation
 
@@ -63,7 +63,8 @@ If you prefer to build from source:
 git clone https://github.com/Karthikdude/Xaphan
 cd Xaphan
 go mod tidy
-go build -o xaphan main.go
+cd cmd/xaphan
+go build -o xaphan
 sudo mv xaphan /usr/local/bin/
 ```
 

@@ -109,12 +109,12 @@ func main() {
 	if cfg.HelpFlag || (cfg.UrlFlag == "" && cfg.ListFlag == "") {
 		flag.Usage()
 		fmt.Println("\nExample usage:")
-		fmt.Println("  ./Xaphan -url example.com -gau")
-		fmt.Println("  ./Xaphan -url example.com -wayback -verbose")
-		fmt.Println("  ./Xaphan -list domains.txt -gau -t 10")
-		fmt.Println("  ./Xaphan -url example.com -gau -save urls.txt")
-		fmt.Println("  ./Xaphan -url example.com -gau -save-gf gf-results.txt -save-uro uro-results.txt")
-		fmt.Println("  ./Xaphan -list domains.txt -wayback -gau -response -html report.html")
+		fmt.Println("  xaphan -url example.com -gau")
+		fmt.Println("  xaphan -url example.com -wayback -verbose")
+		fmt.Println("  xaphan -list domains.txt -gau -t 10")
+		fmt.Println("  xaphan -url example.com -gau -save urls.txt")
+		fmt.Println("  xaphan -url example.com -gau -save-gf gf-results.txt -save-uro uro-results.txt")
+		fmt.Println("  xaphan -list domains.txt -wayback -gau -response -html report.html")
 		return
 	}
 
