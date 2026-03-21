@@ -67,8 +67,12 @@ func main() {
 
 	rand.Seed(time.Now().UnixNano())
 
+	var urlShort, listShort string
+
 	flag.StringVar(&cfg.UrlFlag, "url", "", "Scan a single domain.")
+	flag.StringVar(&urlShort, "u", "", "Scan a single domain (short for -url).")
 	flag.StringVar(&cfg.ListFlag, "list", "", "File containing a list of domains to scan.")
+	flag.StringVar(&listShort, "l", "", "File containing a list of domains to scan (short for -list).")
 	flag.BoolVar(&cfg.WaybackFlag, "wayback", false, "Use Wayback Machine to fetch URLs.")
 	flag.BoolVar(&cfg.GauFlag, "gau", false, "Use gau to fetch URLs.")
 	flag.BoolVar(&cfg.VerboseFlag, "verbose", false, "Enable verbose output.")
@@ -95,6 +99,14 @@ func main() {
 
 	displayBanner()
 	flag.Parse()
+
+	// Handle short flag aliases
+	if urlShort != "" && cfg.UrlFlag == "" {
+		cfg.UrlFlag = urlShort
+	}
+	if listShort != "" && cfg.ListFlag == "" {
+		cfg.ListFlag = listShort
+	}
 
 	// Set up signal handling for graceful shutdown
 	signalChan := make(chan os.Signal, 1)
