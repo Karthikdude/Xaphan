@@ -19,11 +19,59 @@ import (
 )
 
 // FetchWaybackURLs fetches URLs from the Wayback Machine
+// First tries waybackurls tool, then falls back to CDX API
 func FetchWaybackURLs(cfg *core.Config, domain string) ([]string, error) {
 	if cachedURLs, found := cfg.UrlCache.Get("wayback_" + domain); found {
 		return cachedURLs.([]string), nil
 	}
 
+	// First, try to use waybackurls tool if available
+	var cmd *exec.Cmd
+	if runtime.GOOS == "windows" {
+		cmd = exec.Command("where", "waybackurls")
+	} else {
+		cmd = exec.Command("which", "waybackurls")
+	}
+
+	if err := cmd.Run(); err == nil {
+		// waybackurls tool is installed, use it
+		fmt.Printf("  %s Executing: waybackurls %s\n", utils.ColorizeText("⟳", "cyan"), domain)
+		cmd = exec.Command("waybackurls", domain)
+		output, err := cmd.CombinedOutput()
+
+		if err == nil && len(output) > 0 {
+			urls := strings.Split(string(output), "\n")
+			var filteredURLs []string
+			for _, line := range urls {
+				line = strings.TrimSpace(line)
+				if line == "" {
+					continue
+				}
+				if cfg.ExcludeFlag != "" && utils.ShouldExcludeURL(cfg, line) {
+					continue
+				}
+				filteredURLs = append(filteredURLs, line)
+			}
+
+			if len(filteredURLs) > 0 {
+				fmt.Printf("  %s waybackurls found %d URLs for %s\n",
+					utils.ColorizeText("✓", "green"),
+					len(filteredURLs),
+					utils.ColorizeText(domain, "white"))
+				cfg.UrlCache.Set("wayback_"+domain, filteredURLs, cache.DefaultExpiration)
+				return filteredURLs, nil
+			}
+		}
+
+		fmt.Printf("  %s waybackurls returned no results for %s, falling back to CDX API\n",
+			utils.ColorizeText("!", "yellow"),
+			utils.ColorizeText(domain, "white"))
+	} else {
+		fmt.Printf("  %s waybackurls tool not found, using CDX API endpoint\n",
+			utils.ColorizeText("!", "yellow"))
+	}
+
+	// Fallback to CDX API
 	url := fmt.Sprintf("https://web.archive.org/cdx/search/cdx?url=*.%s/*&collapse=urlkey&output=text&fl=original", domain)
 
 	body, err := utils.FetchWithRetry(cfg, url)

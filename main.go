@@ -138,7 +138,13 @@ func main() {
 			cfg.Log.Fatalf("%s File %s not found: %v", utils.ColorizeText("[ERROR]", "red"), cfg.ListFlag, err)
 			return
 		}
-		domains = strings.Split(strings.TrimSpace(string(data)), "\n")
+		lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+		for _, line := range lines {
+			domain := strings.TrimSpace(strings.TrimSuffix(line, "\r"))
+			if domain != "" {
+				domains = append(domains, domain)
+			}
+		}
 		cfg.Log.Infof("%s Total domains to scan: %d", utils.ColorizeText("[INFO]", "green"), len(domains))
 	}
 

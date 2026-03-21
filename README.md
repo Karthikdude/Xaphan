@@ -45,20 +45,29 @@ Xaphan is built to be efficient, easy to use, and integrates seamlessly into sec
 
 Xaphan utilizes advanced pattern matching and rendering engines. Ensure you have **Go 1.20+** installed, along with the required companion tools.
 
-### 1. Clone the Repository
+### Quick Install (Recommended)
+
+The fastest way to install Xaphan directly using Go:
+
+```bash
+go install github.com/Karthikdude/Xaphan@latest
+```
+
+This will download and install the latest version to your `$GOBIN` (typically `~/go/bin`). Ensure this directory is in your `$PATH`.
+
+### Manual Installation
+
+If you prefer to build from source:
 
 ```bash
 git clone https://github.com/Karthikdude/Xaphan
 cd Xaphan
-```
-
-### 2. Install Dependencies
-
-```bash
 go mod tidy
+go build -o xaphan main.go
+sudo mv xaphan /usr/local/bin/
 ```
 
-### 3. Install Required Companion Tools
+### Install Required Companion Tools
 
 Xaphan dynamically wraps several of the community's best URL extraction and parsing tools. You must have them accessible in your system's `$PATH`.
 
@@ -77,13 +86,6 @@ go install -v github.com/projectdiscovery/urlfinder/cmd/urlfinder@latest
 go install github.com/hakluke/hakrawler@latest
 go install github.com/jaeles-project/gospider@latest
 pip install arjun  # or use pipx: pipx install arjun
-```
-
-### 4. Build and Install
-
-```bash
-go build -o xaphan main.go
-sudo mv xaphan /usr/local/bin/
 ```
 
 > **Note:** If you run into command-not-found issues with tools like `gau` or `gf`, ensure your `~/go/bin` directory is in your `$PATH`.
