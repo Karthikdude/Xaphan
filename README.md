@@ -30,7 +30,6 @@ Xaphan is built to be efficient, easy to use, and integrates seamlessly into sec
 - **Pipeline Checkpoints**: Save raw, GF-filtered, or URO-optimized URLs locally to chain with other tools.
 - **Highly Performant**: Concurrent processing via scalable worker threads drastically reduces scan times.
 - **Stealth & Stability**: Built-in User-Agent randomization, HTTP proxy support, customizable timeouts, and request retries.
-
 ---
 
 ## 🚀 Installation & Setup
