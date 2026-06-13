@@ -31,14 +31,6 @@ Xaphan is built to be efficient, easy to use, and integrates seamlessly into sec
 - **Highly Performant**: Concurrent processing via scalable worker threads drastically reduces scan times.
 - **Stealth & Stability**: Built-in User-Agent randomization, HTTP proxy support, customizable timeouts, and request retries.
 
-### 🆕 What's New in Version 3.0?
-
-* **Modular Architecture**: Completely refactored the Go codebase into a clean, maintainable package structure (`core`, `fetcher`, `scanner`, `reporter`, `runner`).
-* **Test Coverage**: Added distinct unit, component, and integration tests to ensure reliability.
-* **Scan Type Display**: Visual indicators in the console distinguish between **Passive** (green) and **Active** (red) scans.
-* **Expanded Tool Arsenal**: Native integration with `Katana`, `URLFinder`, `Arjun`, `Gospider`, and `Hakrawler`.
-* **Parallel Extraction (`-all`)**: The new `-all` flag aggregates and deduplicates results from all active and passive collectors in record time.
-
 ---
 
 ## 🚀 Installation & Setup
