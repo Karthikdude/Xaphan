@@ -93,6 +93,11 @@ func extractDomainParam(rawURL string) (string, string, bool) {
 	return parsed.Host, strings.Join(paramNames, ","), true
 }
 
+// ExtractDomainParamKey is the exported version of extractDomainParam for use by other packages.
+func ExtractDomainParamKey(rawURL string) (string, string, bool) {
+	return extractDomainParam(rawURL)
+}
+
 // DeduplicateResults removes duplicate entries where the same domain+parameter
 // combination appears more than once, keeping the highest-severity finding.
 func DeduplicateResults(xssDetails []map[string]interface{}) []map[string]interface{} {
@@ -283,6 +288,49 @@ func DisplayResults(cfg *core.Config, xssDetails []map[string]interface{}) {
 	}
 
 	fmt.Printf("\n  Total vulnerabilities found: %d\n\n", len(xssDetails))
+}
+
+// DisplaySingleResult prints a single XSS finding immediately.
+func DisplaySingleResult(cfg *core.Config, detail map[string]interface{}) {
+	timestamp := detail["timestamp"].(string)
+	severity := detail["severity"].(string)
+	url := detail["url"].(string)
+	status := detail["status"].(string)
+
+	severityIcon := "✓"
+	if strings.Contains(severity, "CRITICAL") {
+		severityIcon = "⚠"
+	} else if strings.Contains(severity, "MEDIUM") {
+		severityIcon = "⚠"
+	} else if strings.Contains(severity, "LOW") {
+		severityIcon = "⚠"
+	}
+
+	plainSeverity := strings.Replace(strings.Replace(strings.Replace(severity, "\033[31m", "", -1), "\033[33m", "", -1), "\033[0m", "", -1)
+	plainSeverity = strings.Replace(strings.Replace(plainSeverity, "\033[34m", "", -1), "\033[32m", "", -1)
+
+	fmt.Printf("  %s  %s  %s\n", timestamp, utils.ColorizedSeverity(plainSeverity, severityIcon), status)
+	fmt.Printf("  %s %s\n", utils.ColorizeText("URL:", "cyan"), url)
+
+	var unfilteredSymbols []string
+	if strings.Contains(url, "Unfiltered: [") {
+		unfilteredSymbols = strings.Split(strings.Trim(strings.Split(url, "Unfiltered: [")[1], "]"), " ")
+	} else if strings.Contains(url, "kxss") {
+		unfilteredSymbols = []string{"<", ">", "\"", "'", "script"}
+	} else {
+		possibleSymbols := []string{"<", ">", "\"", "'", "script", "onerror", "onload"}
+		for _, symbol := range possibleSymbols {
+			if strings.Contains(strings.ToLower(url), strings.ToLower(symbol)) {
+				unfilteredSymbols = append(unfilteredSymbols, symbol)
+			}
+		}
+	}
+
+	if len(unfilteredSymbols) > 0 {
+		fmt.Printf("  %s %s\n", utils.ColorizeText("Unfiltered:", "cyan"), strings.Join(unfilteredSymbols, ", "))
+	}
+
+	fmt.Println(strings.Repeat("─", 80))
 }
 
 func SaveDetailedReport(xssDetails []map[string]interface{}, outputFile string) error {

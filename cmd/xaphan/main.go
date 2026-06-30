@@ -282,10 +282,13 @@ func main() {
 
 	var allResults []map[string]interface{}
 	for result := range results {
-		domain := result["domain"].(string)
 		if details, ok := result["details"].([]map[string]interface{}); ok {
-			fmt.Printf("\n%s Results for domain: %s\n", utils.ColorizeText("[INFO]", "green"), domain)
-			reporter.DisplayResults(cfg, details)
+			// Results already displayed in real-time by the worker
+			if _, alreadyShown := result["already_shown"]; !alreadyShown {
+				domain := result["domain"].(string)
+				fmt.Printf("\n%s Results for domain: %s\n", utils.ColorizeText("[INFO]", "green"), domain)
+				reporter.DisplayResults(cfg, details)
+			}
 			allResults = append(allResults, details...)
 		} else if errMsg, ok := result["error"].(string); ok {
 			fmt.Println(errMsg)

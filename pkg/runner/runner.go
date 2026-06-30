@@ -2,6 +2,7 @@ package runner
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -20,8 +21,55 @@ func Worker(id int, cfg *core.Config, jobs <-chan string, results chan<- map[str
 		if cfg.UrlFlag != "" {
 			fmt.Printf("\n  %s Processing domain: %s\n", utils.ColorizeText("▶", "cyan"), utils.ColorizeText(domain, "white"))
 		}
-		xssURLs := RunPipeline(cfg, domain)
-		if len(xssURLs) == 0 {
+
+		// Track seen domain+param combos for real-time dedup
+		seenParams := make(map[string]bool)
+		var allDetails []map[string]interface{}
+		hasResults := false
+		headerPrinted := false
+
+		// Stream callback: display results immediately as each batch completes
+		onBatchResult := func(batchURLs []string) {
+			if len(batchURLs) == 0 {
+				return
+			}
+			hasResults = true
+			batchDetails := reporter.ExtractXSSDetails(cfg, batchURLs)
+			if len(batchDetails) == 0 {
+				return
+			}
+
+			// Print header on first result for this domain
+			if !headerPrinted {
+				fmt.Printf("\n%s Results for domain: %s\n",
+					utils.ColorizeText("[INFO]", "green"),
+					utils.ColorizeText(domain, "white"))
+				fmt.Println()
+				utils.PrintBoxedHeader("XSS SCAN RESULTS")
+				fmt.Println(strings.Repeat("─", 80))
+				headerPrinted = true
+			}
+
+			// Display each finding immediately, deduplicating on the fly
+			for _, detail := range batchDetails {
+				url := detail["url"].(string)
+				_, param, ok := reporter.ExtractDomainParamKey(url)
+				key := domain + "|" + param
+				if ok && seenParams[key] {
+					continue // skip duplicate domain+param
+				}
+				if ok {
+					seenParams[key] = true
+				}
+
+				allDetails = append(allDetails, detail)
+				reporter.DisplaySingleResult(cfg, detail)
+			}
+		}
+
+		RunPipeline(cfg, domain, onBatchResult)
+
+		if !hasResults {
 			results <- map[string]interface{}{
 				"domain":  domain,
 				"details": []map[string]interface{}{},
@@ -30,10 +78,14 @@ func Worker(id int, cfg *core.Config, jobs <-chan string, results chan<- map[str
 					utils.ColorizeText(domain, "white")),
 			}
 		} else {
-			xssDetails := reporter.ExtractXSSDetails(cfg, xssURLs)
+			if headerPrinted {
+				fmt.Printf("\n  Total vulnerabilities found for %s: %d\n\n",
+					utils.ColorizeText(domain, "white"), len(allDetails))
+			}
 			results <- map[string]interface{}{
-				"domain":  domain,
-				"details": xssDetails,
+				"domain":        domain,
+				"details":       allDetails,
+				"already_shown": true,
 			}
 		}
 		atomic.AddInt64(&cfg.ProcessedDomains, 1)
@@ -41,7 +93,7 @@ func Worker(id int, cfg *core.Config, jobs <-chan string, results chan<- map[str
 }
 
 // RunPipeline runs the entire fetching and scanning pipeline for a domain
-func RunPipeline(cfg *core.Config, domain string) []string {
+func RunPipeline(cfg *core.Config, domain string, onBatchResult func([]string)) []string {
 	var urls []string
 	var err error
 
@@ -284,6 +336,10 @@ func RunPipeline(cfg *core.Config, domain string) []string {
 
 	for result := range batchResults {
 		finalURLs = append(finalURLs, result...)
+		// Stream results immediately as each batch completes
+		if onBatchResult != nil && len(result) > 0 {
+			onBatchResult(result)
+		}
 	}
 
 	fmt.Printf("\r  %s All batches processed successfully           \n", utils.ColorizeText("✓", "green"))
