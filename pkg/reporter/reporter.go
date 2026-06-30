@@ -4,9 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"net/url"
 	"os"
-	"sort"
 	"strings"
 	"time"
 
@@ -50,94 +48,6 @@ func contains(slice []string, item string) bool {
 		}
 	}
 	return false
-}
-
-// severityRank returns a numeric rank for a severity string (higher = more severe)
-func severityRank(severity string) int {
-	if strings.Contains(severity, "CRITICAL") {
-		return 3
-	} else if strings.Contains(severity, "MEDIUM") {
-		return 2
-	} else if strings.Contains(severity, "LOW") {
-		return 1
-	}
-	return 0
-}
-
-// extractDomainParamKey parses a URL and returns a composite key of "host|paramName"
-// for each query parameter. If the URL cannot be parsed, it returns the raw URL as a
-// single-element slice so the entry is still kept.
-func extractDomainParamKeys(rawURL string) []string {
-	// Strip the "Unfiltered: [...]" suffix that kxss appends
-	cleanURL := rawURL
-	if idx := strings.Index(rawURL, " [Unfiltered"); idx != -1 {
-		cleanURL = rawURL[:idx]
-	}
-
-	parsed, err := url.Parse(cleanURL)
-	if err != nil || parsed.Host == "" {
-		return []string{rawURL}
-	}
-
-	params := parsed.Query()
-	if len(params) == 0 {
-		// URL has no query parameters; use path as key to avoid dropping it
-		return []string{parsed.Host + "|" + parsed.Path}
-	}
-
-	// Sort param names for deterministic output
-	paramNames := make([]string, 0, len(params))
-	for p := range params {
-		paramNames = append(paramNames, p)
-	}
-	sort.Strings(paramNames)
-
-	keys := make([]string, 0, len(paramNames))
-	for _, p := range paramNames {
-		keys = append(keys, parsed.Host+"|"+p)
-	}
-	return keys
-}
-
-// DeduplicateByParameter filters xssDetails so that for each domain only one
-// result per query parameter is kept. When duplicates exist the entry with the
-// highest severity wins.
-func DeduplicateByParameter(xssDetails []map[string]interface{}) []map[string]interface{} {
-	// Map from domain|param key -> best detail index
-	bestIndex := make(map[string]int)
-
-	for i, detail := range xssDetails {
-		rawURL, _ := detail["url"].(string)
-		severity, _ := detail["severity"].(string)
-		rank := severityRank(severity)
-
-		for _, key := range extractDomainParamKeys(rawURL) {
-			if existingIdx, exists := bestIndex[key]; exists {
-				existingSeverity, _ := xssDetails[existingIdx]["severity"].(string)
-				if rank > severityRank(existingSeverity) {
-					bestIndex[key] = i
-				}
-			} else {
-				bestIndex[key] = i
-			}
-		}
-	}
-
-	// Build set of winning indices
-	keepSet := make(map[int]bool)
-	for _, idx := range bestIndex {
-		keepSet[idx] = true
-	}
-
-	// Collect entries in original order
-	var deduped []map[string]interface{}
-	for i, detail := range xssDetails {
-		if keepSet[i] {
-			deduped = append(deduped, detail)
-		}
-	}
-
-	return deduped
 }
 
 // ExtractXSSDetails generates a list of map records for XSS findings
@@ -220,17 +130,7 @@ func ExtractXSSDetails(cfg *core.Config, urls []string) []map[string]interface{}
 				}()))
 	}
 
-	// Deduplicate: keep only one result per parameter per domain (highest severity wins)
-	deduped := DeduplicateByParameter(xssDetails)
-	if len(deduped) < len(xssDetails) {
-		fmt.Printf("  %s Deduplicated results: %s → %s (removed %d duplicate parameter findings)\n",
-			utils.ColorizeText("✓", "green"),
-			utils.ColorizeText(fmt.Sprintf("%d", len(xssDetails)), "white"),
-			utils.ColorizeText(fmt.Sprintf("%d", len(deduped)), "white"),
-			len(xssDetails)-len(deduped))
-	}
-
-	return deduped
+	return xssDetails
 }
 
 // DisplayResults prints results securely and nicely
