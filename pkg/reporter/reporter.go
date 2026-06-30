@@ -64,11 +64,27 @@ func severityRank(severity string) int {
 	return 0
 }
 
-// extractDomainParam extracts the domain and the first query parameter name from a URL string.
-// Returns (domain, paramName, ok). If the URL cannot be parsed or has no query params, ok is false.
+// extractDomainParam extracts the domain and the vulnerable parameter name from a URL string.
+// It first checks for a "Param: <name>" annotation (added by Gxss/Kxss output), which identifies
+// the specific vulnerable parameter. Falls back to all query param names if no annotation exists.
+// Returns (domain, paramName, ok). If the URL cannot be parsed, ok is false.
 func extractDomainParam(rawURL string) (string, string, bool) {
-	// Strip any trailing annotation like " Unfiltered: [...]"
 	clean := rawURL
+
+	// Extract the vulnerable param name from "Param: <name>" annotation if present
+	vulnParam := ""
+	if idx := strings.Index(clean, " Param: "); idx != -1 {
+		rest := clean[idx+len(" Param: "):]
+		// Param name ends at next space or end of string
+		if spaceIdx := strings.Index(rest, " "); spaceIdx != -1 {
+			vulnParam = rest[:spaceIdx]
+		} else {
+			vulnParam = rest
+		}
+		clean = clean[:idx]
+	}
+
+	// Strip any trailing annotation like " Unfiltered: [...]"
 	if idx := strings.Index(clean, " Unfiltered: "); idx != -1 {
 		clean = clean[:idx]
 	}
@@ -78,12 +94,17 @@ func extractDomainParam(rawURL string) (string, string, bool) {
 		return "", "", false
 	}
 
+	// Use the specific vulnerable param if extracted from annotation
+	if vulnParam != "" {
+		return parsed.Host, vulnParam, true
+	}
+
+	// Fallback: use all query parameter names
 	params := parsed.Query()
 	if len(params) == 0 {
 		return parsed.Host, "", true
 	}
 
-	// Collect and sort parameter names for deterministic key
 	paramNames := make([]string, 0, len(params))
 	for k := range params {
 		paramNames = append(paramNames, k)
