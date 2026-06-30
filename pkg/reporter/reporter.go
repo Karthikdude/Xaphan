@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net/url"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -48,6 +50,79 @@ func contains(slice []string, item string) bool {
 		}
 	}
 	return false
+}
+
+// severityRank returns a numeric rank for severity comparison (higher = more severe)
+func severityRank(severity string) int {
+	if strings.Contains(severity, "CRITICAL") {
+		return 3
+	} else if strings.Contains(severity, "MEDIUM") {
+		return 2
+	} else if strings.Contains(severity, "LOW") {
+		return 1
+	}
+	return 0
+}
+
+// extractDomainParam extracts the domain and the first query parameter name from a URL string.
+// Returns (domain, paramName, ok). If the URL cannot be parsed or has no query params, ok is false.
+func extractDomainParam(rawURL string) (string, string, bool) {
+	// Strip any trailing annotation like " Unfiltered: [...]"
+	clean := rawURL
+	if idx := strings.Index(clean, " Unfiltered: "); idx != -1 {
+		clean = clean[:idx]
+	}
+
+	parsed, err := url.Parse(strings.TrimSpace(clean))
+	if err != nil || parsed.Host == "" {
+		return "", "", false
+	}
+
+	params := parsed.Query()
+	if len(params) == 0 {
+		return parsed.Host, "", true
+	}
+
+	// Collect and sort parameter names for deterministic key
+	paramNames := make([]string, 0, len(params))
+	for k := range params {
+		paramNames = append(paramNames, k)
+	}
+	sort.Strings(paramNames)
+
+	return parsed.Host, strings.Join(paramNames, ","), true
+}
+
+// DeduplicateResults removes duplicate entries where the same domain+parameter
+// combination appears more than once, keeping the highest-severity finding.
+func DeduplicateResults(xssDetails []map[string]interface{}) []map[string]interface{} {
+	seen := make(map[string]int) // key -> index in deduplicated slice
+	var deduplicated []map[string]interface{}
+
+	for _, detail := range xssDetails {
+		rawURL := detail["url"].(string)
+		domain, param, ok := extractDomainParam(rawURL)
+		if !ok {
+			// Can't parse — keep it
+			deduplicated = append(deduplicated, detail)
+			continue
+		}
+
+		key := domain + "|" + param
+		if existingIdx, exists := seen[key]; exists {
+			// Keep the higher-severity one
+			existingSeverity := deduplicated[existingIdx]["severity"].(string)
+			newSeverity := detail["severity"].(string)
+			if severityRank(newSeverity) > severityRank(existingSeverity) {
+				deduplicated[existingIdx] = detail
+			}
+		} else {
+			seen[key] = len(deduplicated)
+			deduplicated = append(deduplicated, detail)
+		}
+	}
+
+	return deduplicated
 }
 
 // ExtractXSSDetails generates a list of map records for XSS findings
@@ -129,6 +204,9 @@ func ExtractXSSDetails(cfg *core.Config, urls []string) []map[string]interface{}
 					return "green"
 				}()))
 	}
+
+	// Deduplicate: only show one result per domain+parameter combination
+	xssDetails = DeduplicateResults(xssDetails)
 
 	return xssDetails
 }
